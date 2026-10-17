@@ -87,7 +87,9 @@ test("resident upload → map → rules → submission → council repair → tr
     .fill("Confidential internal operational note");
   await page.getByRole("button", { name: "Add staff note" }).click();
   await expect(
-    page.getByText("Confidential internal operational note"),
+    page
+      .locator(".timeline")
+      .getByText("Confidential internal operational note", { exact: true }),
   ).toBeVisible();
   await page.goto(`/track?ref=${reference}`);
   await expect(
