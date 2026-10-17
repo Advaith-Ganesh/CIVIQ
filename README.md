@@ -276,9 +276,9 @@ npm audit
 
 The E2E runner creates an isolated `prisma/e2e.db`, starts a server on port 3001 and exercises upload-to-reopening, duplicate preservation/rejection, invalid inputs, every public/council route and mobile overflow checks. Unit/integration tests create a separate `prisma/test.db`. They do not reset the local developer database.
 
-**Executed results:** 26 Vitest tests pass; strict TypeScript and production build pass. The local Playwright run passed its API-only test; three browser tests were blocked by macOS sandbox Chromium-launch restrictions, not declared passed. The full flow was separately executed in Codex’s supported browser, including private-note exclusion and resident reopening. See [the detailed verification record](docs/VERIFICATION.md).
+**Executed results:** 26 Vitest tests and all 4 Playwright tests pass on [GitHub Actions](https://github.com/Advaith-Ganesh/CIVIQ/actions/runs/38996461127). Strict TypeScript, database setup and production build also pass. The local macOS standalone browser was blocked by sandbox launch restrictions; the full browser suite then passed on Ubuntu. The flow was additionally verified in Codex’s supported browser, including private-note exclusion and resident reopening. See [the detailed verification record](docs/VERIFICATION.md).
 
-GitHub Actions is configured to repeat setup, type checking, tests, build and the full Playwright suite on an Ubuntu runner. No CI result is claimed until a run completes.
+GitHub Actions repeats setup, type checking, tests, build and the full Playwright suite on an Ubuntu runner. The linked successful run verified application commit `a2b894015665f5c4f8101e9939370d95de2c5ac5`; the final follow-up disables chart animation for stable captures and updates documentation/screenshots.
 
 ## 20. Security and Responsible AI
 
@@ -330,7 +330,7 @@ Before expansion, add production identity, tenancy, verified privacy rules, resi
 - Process-local rate limiting, public media, no automatic moderation or retention cleanup.
 - Audit events are append-only through the app, not cryptographically tamper-proof.
 - One local SQLite database; no production performance or availability claims.
-- Local standalone Playwright browser execution is blocked on the build host; full CI result pending.
+- Local standalone Playwright browser execution is blocked on the macOS build host; all 4 browser/API E2E tests pass on Ubuntu CI.
 
 ## 25. Future roadmap
 

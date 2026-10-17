@@ -69,6 +69,7 @@ export default function CategoryChart({
           />
           <Tooltip />
           <Bar
+            isAnimationActive={false}
             dataKey="value"
             name={time ? "Reports" : "Canonical issues"}
             fill="#138a80"

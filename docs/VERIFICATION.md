@@ -28,6 +28,14 @@ An origin-check bug found during browser verification was fixed by comparing the
 
 The screenshots in this directory's `screenshots/` folder are genuine captures of the running local application. Seed evidence inside them is explicitly labelled synthetic SVG illustration. `image-analysis.png` shows text-only classification, not vision analysis.
 
+## Linux CI result
+
+[GitHub Actions run 38996461127](https://github.com/Advaith-Ganesh/CIVIQ/actions/runs/38996461127) completed successfully for application commit `a2b894015665f5c4f8101e9939370d95de2c5ac5`. Fresh installation, database setup, strict typecheck, 26 Vitest tests, production build and **all 4 Playwright tests** passed. Playwright reported `4 passed (48.7s)`.
+
+The original macOS browser-launch blocker therefore remains only a local environment limitation. Subsequent visual polish disables chart animation for stable screenshots.
+
+Mobile browser checks at 390 × 844 pixels confirmed no horizontal overflow on `/report` and `/dashboard`; screenshots are included. A production-server smoke check verified local demo bypass disabled, unauthenticated staff requests returning 401 and valid-token requests returning 200. Restarting the local server preserved the browser-created report and its Reopened status.
+
 ## Limits
 
-The standalone Playwright browser suite still needs execution on an unrestricted machine or GitHub Actions. CI configuration is included. No live AI, production council identity integration, formal accessibility audit, load test, legal review or real council-data evaluation has been performed. No human product-owner review is claimed.
+The standalone Playwright browser suite passed on GitHub Actions. Local macOS sandbox Chromium-launch restrictions remain. No live AI, production council identity integration, formal accessibility audit, load test, legal review or real council-data evaluation has been performed. No human product-owner review is claimed.
