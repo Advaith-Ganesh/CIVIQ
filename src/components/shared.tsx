@@ -1,48 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  ArrowUpRight,
-  ArrowRight,
-  LayoutDashboard,
-  Map,
-  ClipboardList,
-  Users,
-  ChartNoAxesCombined,
-  Settings,
-  CircleHelp,
-  Search,
-  Bell,
-  ChevronRight,
-  Upload,
-  MapPin,
-  ShieldCheck,
-  Check,
-  Activity,
-  Layers,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Camera,
-  Building2,
-  Menu,
-  X,
-  Route,
-  Sparkles,
-} from "lucide-react";
+import { ShieldCheck, Layers, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  categories as defaultCategories,
-  statuses,
-  transitions,
-  weightNames,
-  financialModel,
-} from "@/lib/rules";
+import { categories as defaultCategories } from "@/lib/rules";
 export const CityMap = dynamic(() => import("./map"), {
   ssr: false,
   loading: () => <div className="map-loading">Loading Southampton map…</div>,
@@ -50,7 +11,16 @@ export const CityMap = dynamic(() => import("./map"), {
 
 export const CategoryChart = dynamic(() => import("./charts"), { ssr: false });
 
-export type Photo = { id: string; path: string };
+export type Photo = {
+  id: string;
+  path: string;
+  analyses?: {
+    id: string;
+    result: string;
+    status: string;
+    correctedCategoryId: string | null;
+  }[];
+};
 
 export type Match = {
   id: string;
@@ -75,6 +45,9 @@ export type Issue = {
   priority: number;
   override: number | null;
   synthetic: boolean;
+  dataType?: string;
+  sourceId?: string | null;
+  accessibility?: string;
   createdAt: string;
   closedAt: string | null;
   reports: {
@@ -123,6 +96,8 @@ export type Meta = {
   teams: { id: string; name: string; area: string }[];
   localDemo: boolean;
   mode: string;
+  provider?: string;
+  model?: { state: string; loaded: boolean; device: string } | null;
 };
 
 export type Metrics = {
@@ -147,7 +122,7 @@ export const initialMeta: Meta = {
   })),
   teams: [],
   localDemo: false,
-  mode: "DEMO MODE",
+  mode: "CHECKING MODEL",
 };
 
 export async function api<T>(path: string, body?: unknown): Promise<T> {
@@ -254,6 +229,45 @@ export function Message({ text }: { text: string }) {
   ) : null;
 }
 
+export function DataBadge({
+  record,
+}: {
+  record: { synthetic?: boolean; dataType?: string };
+}) {
+  const type = record.synthetic
+    ? "SYNTHETIC_DEMO"
+    : record.dataType || "USER_SUBMITTED";
+  const labels: Record<string, string> = {
+    SYNTHETIC_DEMO: "SYNTHETIC DEMO",
+    USER_SUBMITTED: "USER SUBMITTED",
+    PUBLIC_HISTORICAL: "PUBLIC HISTORICAL DATA",
+    MODEL_EVALUATION: "MODEL EVALUATION",
+    OFFICIAL_AGGREGATE: "OFFICIAL AGGREGATE",
+  };
+  return (
+    <Badge type={type === "SYNTHETIC_DEMO" ? "grey" : "blue"}>
+      {labels[type] || type}
+    </Badge>
+  );
+}
+export function LoadingSkeleton() {
+  return (
+    <div
+      className="skeleton-view"
+      aria-label="Loading application data"
+      role="status"
+    >
+      <div className="skeleton skeleton-title" />
+      <div className="skeleton skeleton-subtitle" />
+      <div className="skeleton-grid">
+        {[0, 1, 2, 3].map((i) => (
+          <div className="skeleton skeleton-card" key={i} />
+        ))}
+      </div>
+      <div className="skeleton skeleton-map" />
+    </div>
+  );
+}
 export function Empty({
   text = "No issues match these filters.",
 }: {

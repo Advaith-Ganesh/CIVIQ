@@ -26,11 +26,15 @@ export default function CityMap({
   pick,
   onPick,
   staff = false,
+  onSelect,
+  selectedId,
 }: {
   issues?: Pin[];
   pick?: [number, number];
   onPick?: (lat: number, lng: number) => void;
   staff?: boolean;
+  onSelect?: (id: string) => void;
+  selectedId?: string;
 }) {
   return (
     <div className="map-box">
@@ -49,7 +53,7 @@ export default function CityMap({
           <CircleMarker
             center={pick}
             radius={10}
-            pathOptions={{ color: "#007f78", fillOpacity: 0.85 }}
+            pathOptions={{ color: "#2563eb", fillOpacity: 0.85 }}
           >
             <Popup>Selected report location</Popup>
           </CircleMarker>
@@ -58,14 +62,19 @@ export default function CityMap({
           <CircleMarker
             key={i.id}
             center={[i.lat, i.lng]}
-            radius={i.status === "Verified closed" ? 6 : 9}
+            radius={
+              selectedId === i.id ? 12 : i.status === "Verified closed" ? 6 : 8
+            }
+            eventHandlers={
+              onSelect ? { click: () => onSelect(i.id) } : undefined
+            }
             pathOptions={{
               color:
                 i.status === "Verified closed"
-                  ? "#5c8f7d"
+                  ? "#0f766e"
                   : i.status === "Reopened"
-                    ? "#ca7141"
-                    : "#008c88",
+                    ? "#d97706"
+                    : "#2563eb",
               weight: 3,
               fillColor: "#fff",
               fillOpacity: 0.9,

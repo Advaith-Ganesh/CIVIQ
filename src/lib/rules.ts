@@ -140,6 +140,7 @@ export function duplicateMatches(
   issues: Candidate[],
   threshold = 75,
   now = new Date(),
+  semanticScores?: Record<string, number>,
 ) {
   return issues
     .flatMap((i) => {
@@ -166,7 +167,7 @@ export function duplicateMatches(
       const score = Math.min(
         0.95,
         0.4 * (1 - distance / threshold) +
-          0.4 * text +
+          0.4 * (semanticScores?.[i.id] ?? text) +
           0.1 +
           0.1 * Math.max(0, 1 - age / 90),
       );
@@ -177,7 +178,7 @@ export function duplicateMatches(
               issueId: i.id,
               score,
               distance,
-              explanation: `${Math.round(distance)} m apart; same category; ${Math.round(text * 100)}% word overlap; ${Math.max(0, Math.round(age))} days old. Human confirmation required${input.categoryId === "light" ? "; nearby lamps may be separate assets" : ""}.`,
+              explanation: `${Math.round(distance)} m apart; same category; ${semanticScores?.[i.id] !== undefined ? `MiniLM cosine ${semanticScores[i.id].toFixed(3)} (uncalibrated)` : `${Math.round(text * 100)}% word overlap`}; ${Math.max(0, Math.round(age))} days old. Human confirmation required${input.categoryId === "light" ? "; nearby lamps may be separate assets" : ""}.`,
             },
           ];
     })

@@ -1,57 +1,24 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  ArrowUpRight,
-  ArrowRight,
-  LayoutDashboard,
-  Map,
-  ClipboardList,
-  Users,
-  ChartNoAxesCombined,
-  Settings,
-  CircleHelp,
-  Search,
-  Bell,
-  ChevronRight,
-  Upload,
-  MapPin,
-  ShieldCheck,
-  Check,
-  Activity,
-  Layers,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Camera,
-  Building2,
-  Menu,
-  X,
-  Route,
-  Sparkles,
-} from "lucide-react";
+import { ArrowUpRight, Users, Search, ChevronRight } from "lucide-react";
+import { VisionResultCard } from "./vision-result";
+import type { VisionResult } from "@/lib/local-model";
+import { accessibilityOptions } from "@/lib/provenance";
+import { DataBadge, LoadingSkeleton } from "./shared";
 import { Button } from "@/components/ui/button";
 import {
   categories as defaultCategories,
   statuses,
   transitions,
   weightNames,
-  financialModel,
 } from "@/lib/rules";
 import {
   CityMap,
   CategoryChart,
   Photo,
-  Match,
   Issue,
   Meta,
-  Metrics,
-  initialMeta,
   api,
   upload,
   date,
@@ -61,223 +28,11 @@ import {
   PageHeading,
   Message,
   Empty,
-  Brand,
   StaffGate,
   useIssues,
 } from "./shared";
 import { Calculator } from "./marketing";
-export function Dashboard({ meta }: { meta: Meta }) {
-  const { data, error, reload } = useIssues();
-  if (error) return <StaffGate reload={reload} />;
-  if (!data) return <div className="loading">Loading city operations…</div>;
-  const { issues, metrics: m } = data;
-  const queue = [...issues]
-    .filter((i) => !["Verified closed", "Rejected"].includes(i.status))
-    .sort(
-      (a, b) =>
-        (b.override ?? b.calculated.score) - (a.override ?? a.calculated.score),
-    )
-    .slice(0, 5);
-  return (
-    <>
-      <PageHeading
-        title="A clearer view. A better city."
-        subtitle="Turn everyday reports into coordinated action across Southampton."
-        action={
-          <Button asChild>
-            <Link href="/report">
-              New report <ArrowUpRight size={17} />
-            </Link>
-          </Button>
-        }
-      />
-      <div className="context-strip">
-        <span>
-          <span className="dot" /> City operations overview
-        </span>
-        <span>Stored application data · Synthetic records labelled below</span>
-      </div>
-      <div className="stats-grid">
-        {[
-          [
-            ClipboardList,
-            "Incoming reports",
-            m.reports,
-            `${m.duplicates} confirmed extra reports`,
-          ],
-          [
-            Layers,
-            "Unique issues",
-            m.unique,
-            `${m.potential} potential matches to review`,
-          ],
-          [
-            AlertTriangle,
-            "Needs attention",
-            m.review,
-            `${m.high} high-priority issues`,
-          ],
-          [
-            CheckCircle2,
-            "Verified closed",
-            m.resolved,
-            m.average === null
-              ? "Resolution time not yet available"
-              : `${m.average.toFixed(1)} days average to close`,
-          ],
-        ].map(([Icon, label, value, note], n) => {
-          const I = Icon as typeof Layers;
-          return (
-            <div className="stat-card" key={n}>
-              <div>
-                <span>{label as string}</span>
-                <I size={19} />
-              </div>
-              <strong>{value as number}</strong>
-              <small>{note as string}</small>
-            </div>
-          );
-        })}
-      </div>
-      <div className="dashboard-grid">
-        <section className="card map-card">
-          <div className="card-heading">
-            <div>
-              <h2>Southampton at a glance</h2>
-              <p>Infrastructure issues across the city</p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/map">
-                Explore map <ArrowUpRight size={15} />
-              </Link>
-            </Button>
-          </div>
-          <CityMap issues={issues} staff />
-          <div className="map-footer">
-            <span>
-              <i className="legend teal" />
-              Active issues
-            </span>
-            <span>
-              <i className="legend green" />
-              Verified closed
-            </span>
-            <Badge>DEMO DATA included</Badge>
-          </div>
-        </section>
-        <section className="card queue-card">
-          <div className="card-heading">
-            <div>
-              <h2>Priority action queue</h2>
-              <p>Explainable scores. Human judgement.</p>
-            </div>
-            <Activity size={19} />
-          </div>
-          {queue.length ? (
-            queue.map((i, n) => (
-              <Link
-                className="queue-item"
-                href={`/dashboard/issues/${i.id}`}
-                key={i.id}
-              >
-                <span className="queue-number">
-                  {String(n + 1).padStart(2, "0")}
-                </span>
-                <div>
-                  <strong>{i.category.name}</strong>
-                  <small>
-                    <MapPin size={12} />
-                    {i.location}
-                  </small>
-                  <Status value={i.status} />
-                </div>
-                <Score issue={i} />
-              </Link>
-            ))
-          ) : (
-            <Empty />
-          )}
-          <Link className="card-bottom-link" href="/dashboard/issues">
-            View all issues <ArrowRight size={16} />
-          </Link>
-        </section>
-      </div>
-      <div className="dashboard-grid lower">
-        <section className="card">
-          <div className="card-heading">
-            <div>
-              <h2>Recent reports</h2>
-              <p>Every report keeps its own tracking reference</p>
-            </div>
-            <Link href="/dashboard/issues">View all ↗</Link>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Reference / issue</th>
-                <th>Location</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...issues.flatMap((i) => i.reports.map((r) => ({ r, i })))]
-                .reverse()
-                .slice(0, 5)
-                .map(({ r, i }) => (
-                  <tr key={r.id}>
-                    <td>
-                      <Link href={`/dashboard/issues/${i.id}`}>
-                        <strong>{r.reference}</strong>
-                        <small>
-                          {i.category.name} {r.synthetic ? "· DEMO DATA" : ""}
-                        </small>
-                      </Link>
-                    </td>
-                    <td>{i.location}</td>
-                    <td>
-                      <Status value={i.status} />
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </section>
-        <section className="card">
-          <div className="card-heading">
-            <div>
-              <h2>Issue mix</h2>
-              <p>Canonical issues by category · stored data</p>
-            </div>
-            <ChartNoAxesCombined size={18} />
-          </div>
-          <CategoryChart
-            data={meta.categories
-              .map((c) => ({
-                name: c.name.replace("Damaged ", "").replace("Broken ", ""),
-                value: issues.filter((i) => i.categoryId === c.id).length,
-              }))
-              .filter((x) => x.value)}
-          />
-        </section>
-      </div>
-      <div className="insight-banner">
-        <span className="insight-icon">
-          <ShieldCheck />
-        </span>
-        <div>
-          <h3>Intelligence you can explain.</h3>
-          <p>
-            Classification and priority use transparent rules. Every maintenance
-            decision has an audit trail.
-          </p>
-        </div>
-        <Link href="/about-data">
-          Explore our approach <ArrowUpRight size={16} />
-        </Link>
-      </div>
-    </>
-  );
-}
+export { CommandCentre as Dashboard } from "./command-centre";
 
 export function IssueTable({ issues }: { issues: Issue[] }) {
   return (
@@ -355,7 +110,7 @@ export function Issues({ meta }: { meta: Meta }) {
     [sort, setSort] = useState("priority"),
     [page, setPage] = useState(1);
   if (error) return <StaffGate reload={reload} />;
-  if (!data) return <div className="loading">Loading issues…</div>;
+  if (!data) return <LoadingSkeleton />;
   const filtered = data.issues
     .filter(
       (i) =>
@@ -474,7 +229,13 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
     [photo, setPhoto] = useState<Photo | null>(null),
     [busy, setBusy] = useState(false),
     [override, setOverride] = useState(""),
-    [reason, setReason] = useState("");
+    [reason, setReason] = useState(""),
+    [comparison, setComparison] = useState<{
+      available: boolean;
+      recommendation: string;
+      warning: string;
+      cosineSimilarity?: number;
+    } | null>(null);
   const load = useCallback(
     () =>
       api<Issue>(`issues/${id}`)
@@ -507,7 +268,7 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
     }
   }
   if (error) return <StaffGate reload={load} />;
-  if (!issue) return <div className="loading">Loading issue…</div>;
+  if (!issue) return <LoadingSkeleton />;
   const i = issue;
   return (
     <>
@@ -520,8 +281,8 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
         action={<Status value={i.status} />}
       />
       <div className="detail-tags">
-        {i.synthetic && <Badge type="amber">DEMO DATA · Fictional issue</Badge>}
-        <Badge>Manual review · No image AI</Badge>
+        <DataBadge record={i} />
+        <Badge>Human review required</Badge>
         <Badge>{i.reports.length} associated reports</Badge>
       </div>
       <Message text={message} />
@@ -530,6 +291,18 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
           <section className="card detail-section">
             <h2>Reported evidence</h2>
             <p>{i.description}</p>
+            {i.accessibility && i.accessibility !== "[]" && (
+              <div className="notice">
+                <strong>Reported access impact:</strong>{" "}
+                {accessibilityOptions
+                  .filter(([id]) =>
+                    (JSON.parse(i.accessibility!) as string[]).includes(id),
+                  )
+                  .map(([, label]) => label)
+                  .join(" · ")}
+              </div>
+            )}
+
             <div className="photo-grid">
               {i.reports.flatMap((r) =>
                 r.photographs.map((p) => (
@@ -574,6 +347,45 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
               </div>
             ) : (
               <p className="muted">No repair evidence yet.</p>
+            )}
+            {i.repairs.length > 0 && (
+              <div className="repair-support">
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      setComparison(
+                        await api("repair-compare", {
+                          beforeId: i.reports[0]?.photographs[0]?.id,
+                          afterId:
+                            i.repairs[i.repairs.length - 1].photograph.id,
+                        }),
+                      );
+                    } catch (e) {
+                      setMessage((e as Error).message);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Compare visual embeddings
+                </Button>
+                {comparison && (
+                  <div className="notice">
+                    <div>
+                      <strong>{comparison.recommendation}</strong>
+                      <p>
+                        {comparison.cosineSimilarity !== undefined
+                          ? `Cosine similarity ${comparison.cosineSimilarity.toFixed(3)}. `
+                          : ""}
+                        {comparison.warning}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             <label>
               Completion photograph
@@ -763,7 +575,11 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
             </p>
             <label>
               Maintenance team
-              <select value={team} onChange={(e) => setTeam(e.target.value)}>
+              <select
+                aria-label="Maintenance team"
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+              >
                 <option value="">Select a team</option>
                 {meta.teams.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -824,9 +640,25 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
                 ))}
               </select>
             </label>
+            {i.reports.flatMap((r) =>
+              r.photographs.flatMap((p) =>
+                (p.analyses || []).map((a) => (
+                  <VisionResultCard
+                    key={a.id}
+                    result={JSON.parse(a.result) as VisionResult}
+                  />
+                )),
+              ),
+            )}
             {i.assessments.map((a, n) => (
               <div key={n}>
-                <Badge>{Math.round(a.confidence * 100)}% rule confidence</Badge>
+                <Badge>
+                  {a.provider.startsWith("demo:")
+                    ? `${Math.round(a.confidence * 100)}% keyword coverage`
+                    : a.provider.startsWith("local:")
+                      ? "Local model · uncalibrated"
+                      : "Manual classification"}
+                </Badge>
                 <p>{a.explanation}</p>
                 <small>{a.provider}</small>
               </div>
@@ -840,7 +672,7 @@ export function IssueDetail({ id, meta }: { id: string; meta: Meta }) {
                   <strong>{r.reference} ↗</strong>
                 </Link>
                 <p>{r.description}</p>
-                {r.synthetic && <Badge>DEMO DATA</Badge>}
+                <DataBadge record={r} />
               </div>
             ))}
           </section>
@@ -1059,7 +891,10 @@ export function Insights() {
           <p>No repeated canonical locations detected.</p>
         )}
       </section>
-      <Calculator />
+      <Calculator
+        observedReports={m.reports}
+        observedDuplicates={m.duplicates}
+      />
       <section className="card detail-section">
         <h2>Administrative time scenario</h2>
         <p>
@@ -1083,14 +918,26 @@ export function SettingsPage({
   const [weights, setWeights] = useState([35, 20, 15, 10, 10, 10]),
     [distance, setDistance] = useState(75),
     [reset, setReset] = useState(""),
+    [provider, setProvider] = useState("demo"),
+    [threshold, setThreshold] = useState(0.1),
+    [margin, setMargin] = useState(0.35),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
     [editing, setEditing] = useState<Meta["categories"][number] | null>(null);
   const load = () =>
-    api<{ weights: number[]; distance: number }>("settings")
+    api<{
+      weights: number[];
+      distance: number;
+      provider: string;
+      reviewThreshold: number;
+      marginThreshold: number;
+    }>("settings")
       .then((s) => {
         setWeights(s.weights);
         setDistance(s.distance);
+        setProvider(s.provider);
+        setThreshold(s.reviewThreshold);
+        setMargin(s.marginThreshold);
         setError("");
       })
       .catch((e) => setError(e.message));
@@ -1111,7 +958,14 @@ export function SettingsPage({
           onSubmit={async (e) => {
             e.preventDefault();
             try {
-              await api("settings", { weights, distance });
+              await api("settings", {
+                weights,
+                distance,
+                provider,
+                reviewThreshold: threshold,
+                marginThreshold: margin,
+              });
+              refresh();
               setMessage(
                 "Rules saved. Priorities recalculate from stored data.",
               );
@@ -1159,15 +1013,49 @@ export function SettingsPage({
           <Button>Save rules</Button>
         </form>
         <section className="card detail-section">
-          <h2>Provider & access</h2>
-          <Badge type="green">{meta.mode}</Badge>
+          <h2>Model mode & access</h2>
+          <Badge type="blue">{meta.mode}</Badge>
           <p>
-            Keyword classification, geographic matching and manual image review
-            operate without API keys.
+            Real SigLIP image classification and MiniLM embeddings run in the
+            local Python service. Demo mode uses labelled text rules. Model
+            failure leaves manual classification available.
           </p>
+          <label>
+            Analysis provider
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+            >
+              <option value="demo">Demo text rules (no image inference)</option>
+              <option value="local">Local pretrained models</option>
+            </select>
+          </label>
+          <label>
+            Minimum sigmoid similarity (uncalibrated)
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Minimum top-two raw logit margin
+            <input
+              type="number"
+              min={0}
+              max={5}
+              step={0.05}
+              value={margin}
+              onChange={(e) => setMargin(Number(e.target.value))}
+            />
+          </label>
           <p>
-            AI_PROVIDER=openai is intentionally unavailable until a genuine
-            adapter is implemented; the server returns an explicit error.
+            Use Save rules to apply these settings. Thresholds are experimental
+            review heuristics, not calibrated safety probabilities.{" "}
+            <Link href="/dashboard/ai-lab">Inspect AI Lab ↗</Link>
           </p>
           <p>
             Local demo staff access:{" "}
@@ -1176,11 +1064,8 @@ export function SettingsPage({
                 ? "enabled in development"
                 : "disabled; staff token required"}
             </strong>
-            .
-          </p>
-          <p>
-            Provider and staff secrets are server environment configuration.
-            They cannot be changed from the browser.
+            . Inference credentials and staff secrets remain server
+            configuration.
           </p>
           <hr />
           <h2>Safe demo reset</h2>

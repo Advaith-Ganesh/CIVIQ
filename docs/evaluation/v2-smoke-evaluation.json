@@ -1,0 +1,432 @@
+{
+  "modelId": "google/siglip-base-patch16-224",
+  "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
+  "dataset": "Commons four-image smoke evaluation",
+  "sampleSize": 4,
+  "classDistribution": {
+    "graffiti": 2,
+    "pothole": 2
+  },
+  "evaluatedAt": "2026-10-17T08:58:05.750163+00:00",
+  "metrics": {
+    "accuracy": 1.0,
+    "macroF1": 1.0,
+    "perCategory": {
+      "graffiti": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 0
+      },
+      "pothole": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 0
+      }
+    }
+  },
+  "topCandidateMetrics": {
+    "accuracy": 1.0,
+    "macroF1": 1.0,
+    "perCategory": {
+      "graffiti": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 0
+      },
+      "pothole": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 0
+      }
+    }
+  },
+  "coverage": 1.0,
+  "baseline": {
+    "method": "Deterministic majority-class baseline fitted to this tiny sample (optimistic convenience baseline, no vision).",
+    "category": "graffiti",
+    "metrics": {
+      "accuracy": 0.5,
+      "macroF1": 0.3333333333333333,
+      "perCategory": {
+        "graffiti": {
+          "support": 2,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "truePositive": 2,
+          "falsePositive": 2,
+          "falseNegative": 0
+        },
+        "pothole": {
+          "support": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "truePositive": 0,
+          "falsePositive": 0,
+          "falseNegative": 2
+        }
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "62213124",
+      "label": "graffiti",
+      "prediction": "graffiti",
+      "topCandidate": "graffiti",
+      "abstained": false,
+      "candidates": [
+        {
+          "categoryId": "graffiti",
+          "label": "a photograph of graffiti painted on a wall",
+          "rawScore": 1.57706,
+          "score": 0.828787
+        },
+        {
+          "categoryId": "unclear",
+          "label": "an unclear photograph unrelated to street infrastructure",
+          "rawScore": -10.30259,
+          "score": 3.4e-05
+        },
+        {
+          "categoryId": "other",
+          "label": "a photograph of general street infrastructure",
+          "rawScore": -10.86252,
+          "score": 1.9e-05
+        },
+        {
+          "categoryId": "road",
+          "label": "a photograph of a cracked or damaged road surface",
+          "rawScore": -12.37249,
+          "score": 4e-06
+        },
+        {
+          "categoryId": "dumping",
+          "label": "a photograph of illegally dumped rubbish and discarded waste",
+          "rawScore": -12.72023,
+          "score": 3e-06
+        },
+        {
+          "categoryId": "drain",
+          "label": "a photograph of a blocked drainage grate or flooded drain",
+          "rawScore": -13.84318,
+          "score": 1e-06
+        },
+        {
+          "categoryId": "pavement",
+          "label": "a photograph of broken paving slabs or damaged pavement",
+          "rawScore": -14.14247,
+          "score": 1e-06
+        },
+        {
+          "categoryId": "bin",
+          "label": "a photograph of an overflowing public rubbish bin",
+          "rawScore": -15.05042,
+          "score": 0.0
+        },
+        {
+          "categoryId": "light",
+          "label": "a photograph of visibly damaged streetlight infrastructure, a broken pole or lamp",
+          "rawScore": -15.8139,
+          "score": 0.0
+        },
+        {
+          "categoryId": "pothole",
+          "label": "a photograph of a road pothole, a hole in the asphalt surface",
+          "rawScore": -17.34713,
+          "score": 0.0
+        },
+        {
+          "categoryId": "obstruction",
+          "label": "a photograph of a road obstruction or fallen tree blocking a path",
+          "rawScore": -17.79267,
+          "score": 0.0
+        },
+        {
+          "categoryId": "sign",
+          "label": "a photograph of a damaged or bent road traffic sign",
+          "rawScore": -18.10365,
+          "score": 0.0
+        }
+      ],
+      "durationMs": 84.0,
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Grunge_graffiti_(Unsplash).jpg",
+      "baselinePrediction": "graffiti"
+    },
+    {
+      "id": "88403418",
+      "label": "graffiti",
+      "prediction": "graffiti",
+      "topCandidate": "graffiti",
+      "abstained": false,
+      "candidates": [
+        {
+          "categoryId": "graffiti",
+          "label": "a photograph of graffiti painted on a wall",
+          "rawScore": 0.30874,
+          "score": 0.576578
+        },
+        {
+          "categoryId": "unclear",
+          "label": "an unclear photograph unrelated to street infrastructure",
+          "rawScore": -8.11798,
+          "score": 0.000298
+        },
+        {
+          "categoryId": "other",
+          "label": "a photograph of general street infrastructure",
+          "rawScore": -9.07095,
+          "score": 0.000115
+        },
+        {
+          "categoryId": "dumping",
+          "label": "a photograph of illegally dumped rubbish and discarded waste",
+          "rawScore": -10.43936,
+          "score": 2.9e-05
+        },
+        {
+          "categoryId": "bin",
+          "label": "a photograph of an overflowing public rubbish bin",
+          "rawScore": -12.03217,
+          "score": 6e-06
+        },
+        {
+          "categoryId": "light",
+          "label": "a photograph of visibly damaged streetlight infrastructure, a broken pole or lamp",
+          "rawScore": -14.50785,
+          "score": 1e-06
+        },
+        {
+          "categoryId": "road",
+          "label": "a photograph of a cracked or damaged road surface",
+          "rawScore": -15.74582,
+          "score": 0.0
+        },
+        {
+          "categoryId": "sign",
+          "label": "a photograph of a damaged or bent road traffic sign",
+          "rawScore": -16.48501,
+          "score": 0.0
+        },
+        {
+          "categoryId": "drain",
+          "label": "a photograph of a blocked drainage grate or flooded drain",
+          "rawScore": -17.11662,
+          "score": 0.0
+        },
+        {
+          "categoryId": "pavement",
+          "label": "a photograph of broken paving slabs or damaged pavement",
+          "rawScore": -17.25657,
+          "score": 0.0
+        },
+        {
+          "categoryId": "pothole",
+          "label": "a photograph of a road pothole, a hole in the asphalt surface",
+          "rawScore": -18.7413,
+          "score": 0.0
+        },
+        {
+          "categoryId": "obstruction",
+          "label": "a photograph of a road obstruction or fallen tree blocking a path",
+          "rawScore": -19.07114,
+          "score": 0.0
+        }
+      ],
+      "durationMs": 68.2,
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Karl_Marx_Berlin_Wall_graffiti.jpg",
+      "baselinePrediction": "graffiti"
+    },
+    {
+      "id": "73172959",
+      "label": "pothole",
+      "prediction": "pothole",
+      "topCandidate": "pothole",
+      "abstained": false,
+      "candidates": [
+        {
+          "categoryId": "pothole",
+          "label": "a photograph of a road pothole, a hole in the asphalt surface",
+          "rawScore": 5.55178,
+          "score": 0.996135
+        },
+        {
+          "categoryId": "road",
+          "label": "a photograph of a cracked or damaged road surface",
+          "rawScore": -1.78165,
+          "score": 0.144099
+        },
+        {
+          "categoryId": "drain",
+          "label": "a photograph of a blocked drainage grate or flooded drain",
+          "rawScore": -4.10148,
+          "score": 0.016279
+        },
+        {
+          "categoryId": "unclear",
+          "label": "an unclear photograph unrelated to street infrastructure",
+          "rawScore": -4.8577,
+          "score": 0.007708
+        },
+        {
+          "categoryId": "sign",
+          "label": "a photograph of a damaged or bent road traffic sign",
+          "rawScore": -5.75754,
+          "score": 0.003149
+        },
+        {
+          "categoryId": "light",
+          "label": "a photograph of visibly damaged streetlight infrastructure, a broken pole or lamp",
+          "rawScore": -8.25255,
+          "score": 0.000261
+        },
+        {
+          "categoryId": "obstruction",
+          "label": "a photograph of a road obstruction or fallen tree blocking a path",
+          "rawScore": -8.70776,
+          "score": 0.000165
+        },
+        {
+          "categoryId": "pavement",
+          "label": "a photograph of broken paving slabs or damaged pavement",
+          "rawScore": -10.50525,
+          "score": 2.7e-05
+        },
+        {
+          "categoryId": "other",
+          "label": "a photograph of general street infrastructure",
+          "rawScore": -10.63636,
+          "score": 2.4e-05
+        },
+        {
+          "categoryId": "dumping",
+          "label": "a photograph of illegally dumped rubbish and discarded waste",
+          "rawScore": -11.64224,
+          "score": 9e-06
+        },
+        {
+          "categoryId": "graffiti",
+          "label": "a photograph of graffiti painted on a wall",
+          "rawScore": -15.16603,
+          "score": 0.0
+        },
+        {
+          "categoryId": "bin",
+          "label": "a photograph of an overflowing public rubbish bin",
+          "rawScore": -16.82898,
+          "score": 0.0
+        }
+      ],
+      "durationMs": 67.5,
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Marked_Pothole.jpg",
+      "baselinePrediction": "graffiti"
+    },
+    {
+      "id": "107728665",
+      "label": "pothole",
+      "prediction": "pothole",
+      "topCandidate": "pothole",
+      "abstained": false,
+      "candidates": [
+        {
+          "categoryId": "pothole",
+          "label": "a photograph of a road pothole, a hole in the asphalt surface",
+          "rawScore": 6.35647,
+          "score": 0.998268
+        },
+        {
+          "categoryId": "road",
+          "label": "a photograph of a cracked or damaged road surface",
+          "rawScore": 0.70081,
+          "score": 0.668367
+        },
+        {
+          "categoryId": "drain",
+          "label": "a photograph of a blocked drainage grate or flooded drain",
+          "rawScore": -2.70187,
+          "score": 0.062863
+        },
+        {
+          "categoryId": "unclear",
+          "label": "an unclear photograph unrelated to street infrastructure",
+          "rawScore": -3.5317,
+          "score": 0.028424
+        },
+        {
+          "categoryId": "pavement",
+          "label": "a photograph of broken paving slabs or damaged pavement",
+          "rawScore": -4.78255,
+          "score": 0.008305
+        },
+        {
+          "categoryId": "sign",
+          "label": "a photograph of a damaged or bent road traffic sign",
+          "rawScore": -4.81809,
+          "score": 0.008017
+        },
+        {
+          "categoryId": "light",
+          "label": "a photograph of visibly damaged streetlight infrastructure, a broken pole or lamp",
+          "rawScore": -5.15851,
+          "score": 0.005717
+        },
+        {
+          "categoryId": "obstruction",
+          "label": "a photograph of a road obstruction or fallen tree blocking a path",
+          "rawScore": -5.70094,
+          "score": 0.003332
+        },
+        {
+          "categoryId": "dumping",
+          "label": "a photograph of illegally dumped rubbish and discarded waste",
+          "rawScore": -6.59255,
+          "score": 0.001369
+        },
+        {
+          "categoryId": "other",
+          "label": "a photograph of general street infrastructure",
+          "rawScore": -8.24385,
+          "score": 0.000263
+        },
+        {
+          "categoryId": "graffiti",
+          "label": "a photograph of graffiti painted on a wall",
+          "rawScore": -14.0875,
+          "score": 1e-06
+        },
+        {
+          "categoryId": "bin",
+          "label": "a photograph of an overflowing public rubbish bin",
+          "rawScore": -14.26285,
+          "score": 1e-06
+        }
+      ],
+      "durationMs": 65.4,
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pothole_in_an_asphalt_pavement.jpg",
+      "baselinePrediction": "graffiti"
+    }
+  ],
+  "limitations": [
+    "Only four convenience images in two categories; no holdout set, no confidence intervals, no trained civic classifier evaluation.",
+    "Source-description labels were visually checked by the coding agent, not independently adjudicated by human annotators.",
+    "No Southampton incident images, no streetlight-outage testing and no evidence of performance on unseen categories.",
+    "Zero-shot label prompts and abstention thresholds are experimental. Raw similarities are not probabilities."
+  ]
+}

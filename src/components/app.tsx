@@ -1,14 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   ArrowUpRight,
-  ArrowRight,
   LayoutDashboard,
   Map,
   ClipboardList,
@@ -17,77 +12,40 @@ import {
   Settings,
   CircleHelp,
   Search,
-  Bell,
   ChevronRight,
-  Upload,
-  MapPin,
   ShieldCheck,
-  Check,
-  Activity,
-  Layers,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Camera,
   Building2,
   Menu,
-  X,
-  Route,
-  Sparkles,
+  FlaskConical,
+  Database,
+  MapPinned,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  categories as defaultCategories,
-  statuses,
-  transitions,
-  weightNames,
-  financialModel,
-} from "@/lib/rules";
-import {
-  CityMap,
-  CategoryChart,
-  Photo,
-  Match,
-  Issue,
-  Meta,
-  Metrics,
-  initialMeta,
-  api,
-  upload,
-  date,
-  Badge,
-  Status,
-  Score,
-  PageHeading,
-  Message,
-  Empty,
-  Brand,
-  StaffGate,
-  useIssues,
-} from "./shared";
-import {
-  detailsSchema,
-  Report,
-  Tracked,
-  Tracking,
-  PublicMap,
-} from "./resident";
+
+import { Meta, initialMeta, api, Badge, Empty, Brand } from "./shared";
+import { Report, Tracking, PublicMap } from "./resident";
 import {
   Dashboard,
-  IssueTable,
   Issues,
   IssueDetail,
   Teams,
   Insights,
   SettingsPage,
 } from "./operations";
-import { Calculator, Landing, Demo, AboutData, Privacy } from "./marketing";
+import { AILab, DataSources, Hotspots, OperationsSearch } from "./intelligence";
+import { Landing, Demo, AboutData, Privacy } from "./marketing";
 const nav = [
-  ["/dashboard", "Overview", LayoutDashboard],
+  ["/dashboard", "Command centre", LayoutDashboard],
   ["/dashboard/issues", "Issue management", ClipboardList],
   ["/map", "City map", Map],
   ["/dashboard/teams", "Maintenance teams", Users],
   ["/dashboard/insights", "Insights & impact", ChartNoAxesCombined],
+  ["/dashboard/hotspots", "Hotspots", MapPinned],
+  ["/dashboard/search", "Operations search", Search],
+  ["/dashboard/ai-lab", "AI Lab", FlaskConical],
+  ["/dashboard/data-sources", "Data sources", Database],
   ["/dashboard/settings", "Settings", Settings],
 ] as const;
 
@@ -95,20 +53,35 @@ export default function App() {
   const pathname = usePathname();
   const council = pathname.startsWith("/dashboard");
   const [meta, setMeta] = useState<Meta>(initialMeta),
-    [mobile, setMobile] = useState(false);
+    [mobile, setMobile] = useState(false),
+    [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
-    api<Meta>("meta")
-      .then(setMeta)
-      .catch(() => {});
-  }, []);
+    const refresh = () =>
+      api<Meta>("meta")
+        .then(setMeta)
+        .catch(() => {});
+    refresh();
+    window.addEventListener("civiq-meta-updated", refresh);
+    return () => window.removeEventListener("civiq-meta-updated", refresh);
+  }, [pathname]);
   return (
     <>
       {council ? (
         <>
-          <aside className={`sidebar ${mobile ? "open" : ""}`}>
+          <aside
+            className={`sidebar ${mobile ? "open" : ""} ${collapsed ? "collapsed" : ""}`}
+          >
             <Link className="brand" href="/">
               <Brand />
             </Link>
+            <button
+              className="sidebar-collapse"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+            </button>
             <div className="workspace">
               <span className="city-icon">
                 <Building2 size={20} />
@@ -123,6 +96,8 @@ export default function App() {
                 <Link
                   key={url}
                   href={url}
+                  aria-label={label}
+                  title={label}
                   onClick={() => setMobile(false)}
                   className={
                     (
@@ -135,7 +110,7 @@ export default function App() {
                   }
                 >
                   <Icon size={19} />
-                  {label}
+                  <span className="nav-text">{label}</span>
                   {url === "/dashboard" && <span className="nav-dot" />}
                 </Link>
               ))}
@@ -147,7 +122,7 @@ export default function App() {
               <div className="demo-panel">
                 <span className="dot" /> {meta.mode}
                 <p>
-                  Transparent rules.
+                  Evidence-led operations.
                   <br />
                   Human decisions.
                 </p>
@@ -162,7 +137,7 @@ export default function App() {
               </div>
             </div>
           </aside>
-          <div className="shell">
+          <div className={`shell ${collapsed ? "nav-collapsed" : ""}`}>
             <header className="topbar">
               <button
                 className="mobile-toggle"
@@ -182,7 +157,9 @@ export default function App() {
                 </strong>
               </span>
               <div>
-                <Badge type="green">
+                <Badge
+                  type={meta.mode.includes("UNAVAILABLE") ? "amber" : "blue"}
+                >
                   <span className="tiny-dot" /> {meta.mode}
                 </Badge>
                 <Link href="/report" className="top-link">
@@ -204,6 +181,14 @@ export default function App() {
                 />
               ) : pathname === "/dashboard/insights" ? (
                 <Insights />
+              ) : pathname === "/dashboard/ai-lab" ? (
+                <AILab />
+              ) : pathname === "/dashboard/data-sources" ? (
+                <DataSources />
+              ) : pathname === "/dashboard/hotspots" ? (
+                <Hotspots meta={meta} />
+              ) : pathname === "/dashboard/search" ? (
+                <OperationsSearch meta={meta} />
               ) : pathname === "/dashboard/settings" ? (
                 <SettingsPage
                   meta={meta}
@@ -215,9 +200,7 @@ export default function App() {
             </main>
             <footer className="app-footer">
               CIVIQ AI · SotonShip 2026{" "}
-              <span>
-                Fictional demo records · Not an official council service
-              </span>
+              <span>Provenance shown per record · Independent prototype</span>
             </footer>
           </div>
         </>

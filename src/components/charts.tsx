@@ -72,7 +72,7 @@ export default function CategoryChart({
             isAnimationActive={false}
             dataKey="value"
             name={time ? "Reports" : "Canonical issues"}
-            fill="#138a80"
+            fill="#2563eb"
             radius={time ? [5, 5, 0, 0] : [0, 4, 4, 0]}
           />
         </BarChart>

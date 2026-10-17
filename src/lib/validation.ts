@@ -7,6 +7,18 @@ export const reportSchema = z.object({
   categoryId: z.string().min(1),
   photoId: z.string().min(1),
   confirmIssueId: z.string().optional(),
+  accessibility: z
+    .array(
+      z.enum([
+        "blockedPavement",
+        "wheelchairObstruction",
+        "unsafeCrossing",
+        "tactileObstruction",
+        "restrictedAccess",
+      ]),
+    )
+    .max(5)
+    .default([]),
 });
 export function imageSignature(b: Uint8Array) {
   if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";

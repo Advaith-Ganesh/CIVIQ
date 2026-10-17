@@ -8,3 +8,10 @@ playwright-report/
 *.tsbuildinfo
 .DS_Store
 .next-e2e
+.venv/
+inference/.cache/
+inference/__pycache__/
+inference/.pytest_cache/
+datasets/cache/
+*.pyc
+.env.inference

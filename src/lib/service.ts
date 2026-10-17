@@ -1,4 +1,5 @@
 import { db } from "./db";
+import type { Prisma } from "@prisma/client";
 import {
   classify,
   duplicateMatches,
@@ -8,11 +9,25 @@ import {
   haversine,
 } from "./rules";
 import { reportSchema } from "./validation";
-import { getAdapter } from "./ai";
+import {
+  analyzePhotograph,
+  descriptionEmbeddings,
+  cosine,
+  type VisionResult,
+} from "./local-model";
 import { randomBytes } from "node:crypto";
 export const includeIssue = {
   category: true,
-  reports: { include: { photographs: true, matches: true } },
+  reports: {
+    include: {
+      photographs: {
+        include: {
+          analyses: { orderBy: { createdAt: "desc" as const }, take: 1 },
+        },
+      },
+      matches: true,
+    },
+  },
   assignments: {
     include: { team: true },
     orderBy: { createdAt: "desc" as const },
@@ -23,30 +38,102 @@ export const includeIssue = {
 };
 export async function config() {
   const row = await db.setting.findUnique({ where: { id: "config" } });
-  return row
-    ? JSON.parse(row.value)
-    : { weights: defaultWeights, distance: 75 };
+  return {
+    weights: defaultWeights,
+    distance: 75,
+    provider: process.env.AI_PROVIDER || "demo",
+    reviewThreshold: 0.1,
+    marginThreshold: 0.35,
+    ...(row ? JSON.parse(row.value) : {}),
+  };
 }
 export async function assess(input: {
   description: string;
   categoryId?: string;
   lat: number;
   lng: number;
+  photoId?: string;
 }) {
-  getAdapter();
-  const catalog = await db.category.findMany({ where: { active: true } });
-  const assessment = classify(
+  const catalog = await db.category.findMany({ where: { active: true } }),
+    settings = await config();
+  const text = classify(
     input.description,
     catalog.map((c) => [c.id, c.name, c.keywords] as const),
   );
-  const issues = await db.issue.findMany();
-  const settings = await config();
+  let vision: VisionResult | undefined;
+  if (settings.provider !== "demo")
+    vision =
+      settings.provider === "local" && input.photoId
+        ? await analyzePhotograph(
+            input.photoId,
+            settings.reviewThreshold,
+            settings.marginThreshold,
+          )
+        : {
+            available: false,
+            provider: settings.provider,
+            categoryId: "other",
+            abstained: true,
+            candidates: [],
+            reliabilityWarning:
+              "Photograph analysis unavailable. Select a category manually.",
+          };
+  const assessment =
+    settings.provider === "demo"
+      ? { ...text, method: "demo-text" }
+      : {
+          ...text,
+          categoryId:
+            vision?.available && !vision.abstained
+              ? vision.categoryId
+              : "other",
+          confidence: 0,
+          method: vision?.available ? "local-vision" : "manual",
+          explanation: vision?.available
+            ? `${vision.modelId}: ${vision.abstained ? "model abstained; manual category required" : vision.candidates[0]?.label}. Raw scores are not probabilities.`
+            : vision?.reliabilityWarning || "Choose a category manually.",
+        };
+  const categoryId = input.categoryId || assessment.categoryId;
+  const issues = await db.issue.findMany({
+    where: {
+      categoryId,
+      reports: { some: {} },
+      status: { notIn: ["Verified closed", "Rejected"] },
+      createdAt: { gte: new Date(Date.now() - 90 * 86400000) },
+    },
+    take: 250,
+  });
+  const nearby = issues.filter((i) => haversine(input, i) <= settings.distance);
+  let semanticScores: Record<string, number> | undefined,
+    matchingMethod = "Geographic + keyword rules";
+  if (settings.provider === "local" && nearby.length) {
+    try {
+      const vectors = await descriptionEmbeddings([
+        input.description,
+        ...nearby.map((i) => i.description),
+      ]);
+      semanticScores = Object.fromEntries(
+        nearby.map((issue, i) => [
+          issue.id,
+          Math.max(0, Math.min(1, cosine(vectors[0], vectors[i + 1]))),
+        ]),
+      );
+      matchingMethod = "Geographic + real MiniLM sentence embeddings";
+    } catch {
+      matchingMethod =
+        "Geographic + keyword fallback (embedding service unavailable)";
+    }
+  }
   return {
     assessment,
+    vision,
+    matchingMethod,
     matches: duplicateMatches(
-      { ...input, categoryId: input.categoryId || assessment.categoryId },
-      issues,
+      { ...input, categoryId },
+      nearby,
       settings.distance,
+      new Date(),
+      semanticScores,
     ).map((m) => ({ ...m, issue: issues.find((i) => i.id === m.issueId) })),
   };
 }
@@ -60,6 +147,7 @@ export async function issueScore(
     categoryId: string;
     createdAt: Date;
     context: number;
+    accessibility?: string;
     reports: { id: string }[];
     assessments: { confidence: number }[];
   },
@@ -73,7 +161,11 @@ export async function issueScore(
     ...priority(
       {
         severity: issue.severity,
-        description: issue.description,
+        description:
+          issue.description +
+          (issue.accessibility && issue.accessibility !== "[]"
+            ? " wheelchair access blocked"
+            : ""),
         ageDays: Math.max(
           0,
           (Date.now() - new Date(issue.createdAt).getTime()) / 86400000,
@@ -88,9 +180,9 @@ export async function issueScore(
     recurrence,
   };
 }
-export async function listIssues() {
+export async function listIssues(filters: Prisma.IssueWhereInput = {}) {
   const issues = await db.issue.findMany({
-    where: { reports: { some: {} } },
+    where: { ...filters, reports: { some: {} } },
     include: includeIssue,
   });
   const settings = await config();
@@ -112,7 +204,7 @@ export async function submitReport(raw: unknown) {
     where: { id: input.categoryId },
   });
   if (!category?.active) throw new Error("Select an active category.");
-  const { assessment, matches } = await assess(input);
+  const { assessment, matches, vision } = await assess(input);
   if (
     input.confirmIssueId &&
     !matches.some((m) => m.issueId === input.confirmIssueId)
@@ -133,6 +225,8 @@ export async function submitReport(raw: unknown) {
             lng: input.lng,
             location: input.location,
             severity: assessment.severity,
+            accessibility: JSON.stringify(input.accessibility),
+            dataType: "USER_SUBMITTED",
             priority: priority({
               severity: assessment.severity,
               description: input.description,
@@ -151,6 +245,8 @@ export async function submitReport(raw: unknown) {
         description: input.description,
         lat: input.lat,
         lng: input.lng,
+        accessibility: JSON.stringify(input.accessibility),
+        dataType: "USER_SUBMITTED",
       },
     });
     const claimed = await tx.photograph.updateMany({
@@ -162,11 +258,36 @@ export async function submitReport(raw: unknown) {
     await tx.assessment.create({
       data: {
         issueId: issue.id,
-        provider: "demo:keyword-rules",
+        provider:
+          assessment.method === "demo-text"
+            ? "demo:keyword-rules"
+            : vision?.available
+              ? "local:SigLIP (uncalibrated)"
+              : "manual:inference-unavailable",
         confidence: assessment.confidence,
         explanation: assessment.explanation,
       },
     });
+    if (
+      vision?.available &&
+      vision.analysisId &&
+      input.categoryId !== vision.suggestedCategoryId
+    )
+      await tx.imageAnalysis.update({
+        where: { id: vision.analysisId },
+        data: { correctedCategoryId: input.categoryId },
+      });
+    if (input.confirmIssueId && input.accessibility.length) {
+      const current = JSON.parse(issue.accessibility) as string[];
+      await tx.issue.update({
+        where: { id: issue.id },
+        data: {
+          accessibility: JSON.stringify([
+            ...new Set([...current, ...input.accessibility]),
+          ]),
+        },
+      });
+    }
     for (const m of matches)
       await tx.duplicateMatch.create({
         data: {
@@ -278,6 +399,17 @@ export async function mutateIssue(
       await tx.issue.update({
         where: { id },
         data: { categoryId: category.id },
+      });
+      const photos = await tx.photograph.findMany({
+        where: { report: { issueId: id } },
+        select: { id: true },
+      });
+      await tx.imageAnalysis.updateMany({
+        where: {
+          photographId: { in: photos.map((p) => p.id) },
+          status: "available",
+        },
+        data: { correctedCategoryId: category.id },
       });
       message = `Human classification: ${category.name}`;
     } else if (input.action === "repair") {

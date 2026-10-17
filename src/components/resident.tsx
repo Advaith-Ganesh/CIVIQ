@@ -1,69 +1,38 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowUpRight,
   ArrowRight,
-  LayoutDashboard,
-  Map,
-  ClipboardList,
-  Users,
-  ChartNoAxesCombined,
-  Settings,
-  CircleHelp,
-  Search,
-  Bell,
-  ChevronRight,
-  Upload,
   MapPin,
   ShieldCheck,
   Check,
-  Activity,
-  Layers,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   Camera,
-  Building2,
-  Menu,
-  X,
-  Route,
   Sparkles,
 } from "lucide-react";
+import { VisionResultCard } from "./vision-result";
+import type { VisionResult } from "@/lib/local-model";
+import { accessibilityOptions } from "@/lib/provenance";
 import { Button } from "@/components/ui/button";
-import {
-  categories as defaultCategories,
-  statuses,
-  transitions,
-  weightNames,
-  financialModel,
-} from "@/lib/rules";
+import { statuses } from "@/lib/rules";
 import {
   CityMap,
-  CategoryChart,
   Photo,
-  Match,
   Issue,
   Meta,
-  Metrics,
-  initialMeta,
   api,
   upload,
   date,
   Badge,
   Status,
-  Score,
   PageHeading,
+  DataBadge,
   Message,
   Empty,
-  Brand,
-  StaffGate,
-  useIssues,
 } from "./shared";
 export const detailsSchema = z.object({
   description: z
@@ -79,25 +48,29 @@ export function Report({ meta }: { meta: Meta }) {
     [photo, setPhoto] = useState<Photo | null>(null),
     [pick, setPick] = useState<[number, number]>([50.9097, -1.4044]),
     [selected, setSelected] = useState(false),
+    [category, setCategory] = useState(""),
+    [duplicate, setDuplicate] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [accessibility, setAccessibility] = useState<string[]>([]),
     [suggestion, setSuggestion] = useState<{
       assessment: {
         categoryId: string;
         confidence: number;
         explanation: string;
         urgent: boolean;
+        method?: string;
       };
+      vision?: VisionResult;
+      matchingMethod: string;
       matches: {
         issueId: string;
         score: number;
         distance: number;
         explanation: string;
-        issue: { title: string; location: string };
+        issue: { title: string; location: string; lat: number; lng: number };
       }[];
     } | null>(null),
-    [category, setCategory] = useState(""),
-    [duplicate, setDuplicate] = useState(""),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
     [result, setResult] = useState<{
       reference: string;
       issueId: string;
@@ -111,14 +84,19 @@ export function Report({ meta }: { meta: Meta }) {
     resolver: zodResolver(detailsSchema),
     defaultValues: { description: "", location: "" },
   });
-  const steps = [
-    "Photograph",
-    "Location",
-    "Description",
-    "Classification",
-    "Duplicates",
-    "Confirm",
-  ];
+  const steps = ["Photo", "Location", "Details", "Check existing", "Submit"];
+  async function addPhoto(file: File) {
+    setBusy(true);
+    setError("");
+    try {
+      setPhoto(await upload(file));
+      setSuggestion(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function analyze(cat?: string) {
     setBusy(true);
     setError("");
@@ -127,10 +105,12 @@ export function Report({ meta }: { meta: Meta }) {
         description: getValues("description"),
         lat: pick[0],
         lng: pick[1],
+        photoId: photo?.id,
         categoryId: cat,
       });
       setSuggestion(s);
       setCategory(cat || s.assessment.categoryId);
+      setDuplicate("");
       return true;
     } catch (e) {
       setError((e as Error).message);
@@ -149,8 +129,8 @@ export function Report({ meta }: { meta: Meta }) {
           <div className="eyebrow">REPORT RECEIVED</div>
           <h1>Your city. Your contribution.</h1>
           <p>
-            Your evidence is saved. Keep this reference to follow the
-            maintenance journey.
+            Your report and evidence are saved. Keep this reference to follow
+            the maintenance journey.
           </p>
           <div className="reference-box" data-testid="tracking-reference">
             {result.reference}
@@ -167,13 +147,14 @@ export function Report({ meta }: { meta: Meta }) {
   return (
     <main className="report-wrap">
       <PageHeading
-        eyebrow="RESIDENT REPORTING"
+        eyebrow="RESIDENT SERVICES / REPORT AN ISSUE"
         title="Let’s make it better."
-        subtitle="A few details can help turn a city problem into a coordinated repair."
+        subtitle="Clear evidence helps the right team take the next step."
       />
       <ol className="report-steps">
         {steps.map((s, n) => (
           <li
+            aria-current={n === step ? "step" : undefined}
             className={n === step ? "current" : n < step ? "done" : ""}
             key={s}
           >
@@ -183,54 +164,66 @@ export function Report({ meta }: { meta: Meta }) {
         ))}
       </ol>
       <div className="card report-card">
-        <div className="eyebrow">STEP {step + 1} OF 6</div>
+        <div className="eyebrow">STEP {step + 1} OF 5</div>
         <h2>
           {
             [
               "Show us the problem",
               "Pinpoint the location",
-              "Tell us what happened",
-              "Review the suggestion",
-              "Has it already been reported?",
-              "Ready to send?",
+              "Add the useful details",
+              "Check the suggestion and existing reports",
+              "Check and submit",
             ][step]
           }
         </h2>
         <p>
           {
             [
-              "Upload a JPEG, PNG or WebP photograph, up to 5 MB. Avoid faces, number plates and personal information.",
-              "Click on the Southampton map, or enter precise coordinates below.",
-              "Include the asset number for streetlights and signs when possible.",
-              "Deterministic text rules suggest a category. You can correct it.",
-              "Nearby issues are suggestions only. Confirm only if this is the same physical problem.",
-              "Your photograph and report will be public. Check the information before submitting.",
+              "Upload an image, drag it here or use your camera. Avoid faces, number plates and personal information.",
+              "Click the Southampton map or enter coordinates. A precise location helps teams find the issue.",
+              "Describe the physical problem. Add a streetlight or sign asset number where possible.",
+              "Model suggestions and nearby matches require your review. Choose a separate issue if this is a different physical asset.",
+              "Review what will be public. Your tracking reference will appear after the report is saved.",
             ][step]
           }
         </p>
         <Message text={error} />
         {step === 0 && (
           <>
-            <label className="upload-zone">
-              <Camera size={36} />
-              <strong>{busy ? "Uploading…" : "Choose a photograph"}</strong>
-              <span>JPEG, PNG or WebP · 5 MB maximum</span>
+            <label
+              className="upload-zone"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files[0]) addPhoto(e.dataTransfer.files[0]);
+              }}
+            >
+              <Camera size={32} />
+              <strong>
+                {busy
+                  ? "Validating and saving…"
+                  : "Drop a photograph here, or browse"}
+              </strong>
+              <span>JPEG, PNG or WebP · up to 5 MB</span>
               <input
                 aria-label="Problem photograph"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 disabled={busy}
-                onChange={async (e) => {
-                  if (!e.target.files?.[0]) return;
-                  setBusy(true);
-                  setError("");
-                  try {
-                    setPhoto(await upload(e.target.files[0]));
-                  } catch (e) {
-                    setError((e as Error).message);
-                  } finally {
-                    setBusy(false);
-                  }
+                onChange={(e) => {
+                  if (e.target.files?.[0]) addPhoto(e.target.files[0]);
+                }}
+              />
+            </label>
+            <label className="camera-option">
+              Use your camera
+              <input
+                aria-label="Take a photograph"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) addPhoto(e.target.files[0]);
                 }}
               />
             </label>
@@ -242,10 +235,11 @@ export function Report({ meta }: { meta: Meta }) {
               />
             )}
             <div className="notice">
-              <ShieldCheck size={19} />
+              <ShieldCheck size={18} />
               <span>
-                Image metadata is removed. No AI image analysis is performed in
-                this demonstration.
+                Metadata is removed. In local model mode, the sanitized image
+                stays on this computer. Manual reporting remains available if
+                the model is offline.
               </span>
             </div>
           </>
@@ -288,8 +282,8 @@ export function Report({ meta }: { meta: Meta }) {
               </label>
             </div>
             <small>
-              The demo accepts coordinates within 50.85–50.97 N, 1.50–1.30 W.
-              This is a bounding box, not an official city boundary.
+              Accepted demo area: 50.85–50.97 N, 1.50–1.30 W. This is a bounding
+              box, not an official city boundary.
             </small>
           </>
         )}
@@ -304,7 +298,7 @@ export function Report({ meta }: { meta: Meta }) {
               Street or landmark
               <input
                 {...register("location")}
-                placeholder="e.g. Portswood Road, beside the crossing"
+                placeholder="Street name and a nearby landmark"
               />
             </label>
             {errors.location && (
@@ -316,8 +310,8 @@ export function Report({ meta }: { meta: Meta }) {
               Describe the problem
               <textarea
                 {...register("description")}
-                rows={5}
-                placeholder="What is damaged? How is it affecting people?"
+                rows={4}
+                placeholder="What is damaged, and how is it affecting the street or path?"
               />
             </label>
             {errors.description && (
@@ -325,31 +319,59 @@ export function Report({ meta }: { meta: Meta }) {
                 {errors.description.message}
               </span>
             )}
+            <fieldset className="accessibility-fields">
+              <legend>
+                Access impact{" "}
+                <span>
+                  Optional · describe the obstruction, not personal medical
+                  information
+                </span>
+              </legend>
+              {accessibilityOptions.map(([id, label]) => (
+                <label key={id}>
+                  <input
+                    type="checkbox"
+                    checked={accessibility.includes(id)}
+                    onChange={(e) =>
+                      setAccessibility(
+                        e.target.checked
+                          ? [...accessibility, id]
+                          : accessibility.filter((x) => x !== id),
+                      )
+                    }
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
           </form>
         )}
         {step === 3 && suggestion && (
           <>
-            <div className="classification-result">
-              <span>
-                <Sparkles size={23} />
-              </span>
-              <div>
-                <Badge>DEMO MODE · TEXT RULES</Badge>
-                <h3>{meta.categories.find((c) => c.id === category)?.name}</h3>
-                <p>{suggestion.assessment.explanation}</p>
-                <strong>
-                  {Math.round(suggestion.assessment.confidence * 100)}% rule
-                  confidence
-                </strong>
+            {suggestion.vision ? (
+              <VisionResultCard result={suggestion.vision} />
+            ) : (
+              <div className="classification-result">
+                <Sparkles size={22} />
+                <div>
+                  <Badge>DEMO MODE · TEXT RULES</Badge>
+                  <h3>
+                    {meta.categories.find((c) => c.id === category)?.name}
+                  </h3>
+                  <p>{suggestion.assessment.explanation}</p>
+                  <small>
+                    {Math.round(suggestion.assessment.confidence * 100)}%
+                    keyword rule coverage · no image model used
+                  </small>
+                </div>
               </div>
-            </div>
+            )}
             {suggestion.assessment.urgent && (
               <div className="notice danger">
-                Potential safety wording detected. This demo is not monitored by
-                emergency services. For immediate danger, contact emergency
-                services on 999.{" "}
+                Potential safety wording detected. This prototype is not
+                monitored by emergency services.{" "}
                 <a href="https://www.gov.uk/contact-emergency-services">
-                  Official guidance ↗
+                  Official emergency guidance ↗
                 </a>
               </div>
             )}
@@ -358,54 +380,60 @@ export function Report({ meta }: { meta: Meta }) {
               <select
                 aria-label="Suggested classification"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                disabled={busy}
+                onChange={(e) => analyze(e.target.value)}
               >
                 {meta.categories
                   .filter((c) => c.active)
                   .map((c) => (
-                    <option value={c.id} key={c.id}>
+                    <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
               </select>
             </label>
-            <p className="small-text">
-              Confidence describes keyword coverage, not safety or photographic
-              certainty.
-            </p>
-          </>
-        )}
-        {step === 4 && suggestion && (
-          <>
+            <div className="duplicate-heading">
+              <h3>Potential existing reports</h3>
+              <small>{suggestion.matchingMethod}</small>
+            </div>
             {suggestion.matches.length ? (
-              suggestion.matches.map((m) => (
-                <label
-                  key={m.issueId}
-                  className={`duplicate-choice ${duplicate === m.issueId ? "selected" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="duplicate"
-                    value={m.issueId}
-                    checked={duplicate === m.issueId}
-                    onChange={() => setDuplicate(m.issueId)}
-                  />
-                  <span>
-                    <strong>{m.issue.title}</strong>
-                    <small>
-                      {m.issue.location} · {Math.round(m.score * 100)}%
-                      potential match
-                    </small>
-                    <p>{m.explanation}</p>
-                  </span>
-                </label>
-              ))
+              <>
+                <CityMap
+                  issues={suggestion.matches.map((m) => ({
+                    ...m.issue,
+                    id: m.issueId,
+                    lat: m.issue.lat,
+                    lng: m.issue.lng,
+                    status: "Candidate",
+                  }))}
+                />
+                {suggestion.matches.map((m) => (
+                  <label
+                    className={`duplicate-choice ${duplicate === m.issueId ? "selected" : ""}`}
+                    key={m.issueId}
+                  >
+                    <input
+                      type="radio"
+                      name="duplicate"
+                      checked={duplicate === m.issueId}
+                      onChange={() => setDuplicate(m.issueId)}
+                    />
+                    <span>
+                      <strong>{m.issue.title}</strong>
+                      <small>
+                        {m.issue.location} · match score {m.score.toFixed(2)} /
+                        1
+                      </small>
+                      <p>{m.explanation}</p>
+                    </span>
+                  </label>
+                ))}
+              </>
             ) : (
               <div className="notice">
-                <CheckCircle2 />
-                <span>
-                  No nearby matching issues found. A new issue will be created.
-                </span>
+                <CheckCircle2 size={18} />
+                No matching nearby issue found. A new canonical issue will be
+                created.
               </div>
             )}
             <label className="duplicate-choice">
@@ -418,13 +446,13 @@ export function Report({ meta }: { meta: Meta }) {
               <span>
                 <strong>This is a separate problem</strong>
                 <small>
-                  Create a new canonical issue with its own evidence.
+                  Keep this physical asset separate from nearby issues.
                 </small>
               </span>
             </label>
           </>
         )}
-        {step === 5 && (
+        {step === 4 && (
           <div className="review-summary">
             <img src={photo?.path} alt="Report evidence review" />
             <dl>
@@ -439,16 +467,24 @@ export function Report({ meta }: { meta: Meta }) {
               </dd>
               <dt>Description</dt>
               <dd>{getValues("description")}</dd>
-              <dt>Matching decision</dt>
+              <dt>Association</dt>
               <dd>
                 {duplicate
                   ? "Confirm an existing issue"
                   : "Create a separate issue"}
               </dd>
+              <dt>Access impact</dt>
+              <dd>
+                {accessibility.length
+                  ? accessibilityOptions
+                      .filter(([id]) => accessibility.includes(id))
+                      .map(([, label]) => label)
+                      .join(", ")
+                  : "None reported"}
+              </dd>
             </dl>
             <div className="notice">
-              By submitting, you acknowledge the public demonstration data
-              handling described in our{" "}
+              Your report and photo are public demonstration records. See the{" "}
               <Link href="/privacy">privacy notice</Link>.
             </div>
           </div>
@@ -456,6 +492,7 @@ export function Report({ meta }: { meta: Meta }) {
         <div className="report-actions">
           <Button
             variant="outline"
+            type="button"
             disabled={step === 0 || busy}
             onClick={() => {
               setError("");
@@ -466,12 +503,13 @@ export function Report({ meta }: { meta: Meta }) {
           </Button>
           <small>Anonymous · No account needed</small>
           {step === 2 ? (
-            <Button type="submit" form="description-form" disabled={busy}>
-              {busy ? "Reviewing…" : "Review classification"}
-              <ArrowRight size={16} />
+            <Button form="description-form" type="submit" disabled={busy}>
+              {busy ? "Reviewing image and matches…" : "Review classification"}
+              <ArrowRight size={15} />
             </Button>
           ) : (
             <Button
+              type="button"
               disabled={
                 busy || (step === 0 && !photo) || (step === 1 && !selected)
               }
@@ -485,18 +523,11 @@ export function Report({ meta }: { meta: Meta }) {
                     pick[1] > -1.3)
                 ) {
                   setError(
-                    "Choose a location within the Southampton demo area.",
+                    "Choose a location inside the Southampton demo area.",
                   );
                   return;
                 }
-                if (step === 3) {
-                  if (await analyze(category)) {
-                    setDuplicate("");
-                    setStep(4);
-                  }
-                  return;
-                }
-                if (step === 5) {
+                if (step === 4) {
                   setBusy(true);
                   try {
                     setResult(
@@ -507,6 +538,7 @@ export function Report({ meta }: { meta: Meta }) {
                         categoryId: category,
                         photoId: photo?.id,
                         confirmIssueId: duplicate || undefined,
+                        accessibility,
                       }),
                     );
                   } catch (e) {
@@ -519,8 +551,8 @@ export function Report({ meta }: { meta: Meta }) {
                 setStep(step + 1);
               }}
             >
-              {busy ? "Saving…" : step === 5 ? "Submit report" : "Continue"}
-              <ArrowRight size={16} />
+              {busy ? "Saving…" : step === 4 ? "Submit report" : "Continue"}
+              <ArrowRight size={15} />
             </Button>
           )}
         </div>
@@ -530,7 +562,7 @@ export function Report({ meta }: { meta: Meta }) {
         <a href="https://www.gov.uk/contact-emergency-services">
           official emergency services
         </a>
-        . CIVIQ AI is an independent demonstration.
+        . This is an independent prototype.
       </p>
     </main>
   );
@@ -546,6 +578,7 @@ export type Tracked = {
     status: string;
     location: string;
     synthetic: boolean;
+    dataType?: string;
     events: { id: string; message: string; createdAt: string }[];
     before: string[];
     repairs: { outcome: string; verified: boolean; path: string }[];
@@ -617,9 +650,7 @@ export function Tracking() {
               <MapPin size={16} /> {data.issue.location} · Reported{" "}
               {date(data.reportedAt)}
             </p>
-            {data.issue.synthetic && (
-              <Badge type="amber">DEMO DATA · Fictional report</Badge>
-            )}
+            <DataBadge record={data.issue} />
             <ol className="timeline">
               {data.issue.events.map((e) => (
                 <li key={e.id}>
@@ -758,8 +789,7 @@ export function PublicMap({ meta }: { meta: Meta }) {
               {i.location} ·{" "}
               {meta.categories.find((c) => c.id === i.categoryId)?.name}
             </p>
-            <Status value={i.status} />{" "}
-            {i.synthetic && <Badge>DEMO DATA</Badge>}
+            <Status value={i.status} /> <DataBadge record={i} />
           </article>
         ))}
         {!filtered.length && <Empty />}

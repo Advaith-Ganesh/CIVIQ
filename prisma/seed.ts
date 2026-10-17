@@ -27,6 +27,16 @@ export async function seed(reset = false) {
           OR: [{ issueId: { in: ids } }, { report: { issueId: { in: ids } } }],
         },
       }),
+      db.imageAnalysis.deleteMany({
+        where: {
+          photograph: {
+            OR: [
+              { report: { issueId: { in: ids } } },
+              { id: { in: repairPhotos.map((p) => p.photographId) } },
+            ],
+          },
+        },
+      }),
       db.repairEvidence.deleteMany({ where: { issueId: { in: ids } } }),
       db.photograph.deleteMany({
         where: {
@@ -255,6 +265,7 @@ export async function seed(reset = false) {
         severity: assessment.severity,
         priority: score,
         synthetic: true,
+        dataType: "SYNTHETIC_DEMO",
         createdAt,
         closedAt: status === "Verified closed" ? new Date() : null,
         reports: {
@@ -265,11 +276,13 @@ export async function seed(reset = false) {
             lat,
             lng,
             synthetic: true,
+            dataType: "SYNTHETIC_DEMO",
             createdAt,
             photographs: {
               create: {
                 path: `/demo/${categoryId}.svg`,
                 mime: "image/svg+xml",
+                dataType: "SYNTHETIC_DEMO",
               },
             },
           },
@@ -321,7 +334,11 @@ export async function seed(reset = false) {
       });
     if (["Verified closed", "Resolved pending verification"].includes(status)) {
       const photo = await db.photograph.create({
-        data: { path: "/demo/repaired.svg", mime: "image/svg+xml" },
+        data: {
+          path: "/demo/repaired.svg",
+          mime: "image/svg+xml",
+          dataType: "SYNTHETIC_DEMO",
+        },
       });
       await db.repairEvidence.create({
         data: {
@@ -355,8 +372,13 @@ export async function seed(reset = false) {
         lat: 50.927 + n * 0.00002,
         lng: -1.395,
         synthetic: true,
+        dataType: "SYNTHETIC_DEMO",
         photographs: {
-          create: { path: "/demo/pothole.svg", mime: "image/svg+xml" },
+          create: {
+            path: "/demo/pothole.svg",
+            mime: "image/svg+xml",
+            dataType: "SYNTHETIC_DEMO",
+          },
         },
       },
     });

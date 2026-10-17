@@ -1,3 +1,12 @@
+import {
+  modelStatus,
+  inferenceRequest,
+  repairComparison,
+  analyzePhotograph,
+} from "@/lib/local-model";
+import { importManifest } from "@/lib/importer";
+import { findHotspots } from "@/lib/hotspots";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -7,12 +16,11 @@ import {
   submitReport,
   mutateIssue,
   metrics,
-  includeIssue,
 } from "@/lib/service";
 import { isStaff, localDemo, rateLimit } from "@/lib/auth";
 import { validateImage } from "@/lib/validation";
 import { seed } from "../../../../prisma/seed";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { z } from "zod";
@@ -25,16 +33,31 @@ export async function GET(
 ) {
   try {
     const p = (await params).path;
-    if (p[0] === "meta")
+    if (p[0] === "meta") {
+      const settings = await config();
+      const model = settings.provider === "local" ? await modelStatus() : null;
       return json({
         categories: await db.category.findMany(),
         teams: await db.team.findMany(),
         localDemo: localDemo(),
+        provider: settings.provider,
+        model,
         mode:
-          process.env.AI_PROVIDER === "openai"
-            ? "LIVE AI UNAVAILABLE"
-            : "DEMO MODE",
+          settings.provider === "demo"
+            ? "DEMO MODE"
+            : model?.loaded && !!model.classifications
+              ? "LIVE MODEL"
+              : model?.state === "loading"
+                ? "MODEL LOADING"
+                : "MODEL UNAVAILABLE · MANUAL REVIEW",
       });
+    }
+    if (p[0] === "evidence")
+      return json(
+        await db.datasetSource.findUnique({
+          where: { id: "southampton-waste" },
+        }),
+      );
     if (p[0] === "public")
       return json(
         await db.issue.findMany({
@@ -48,6 +71,7 @@ export async function GET(
             lng: true,
             location: true,
             synthetic: true,
+            dataType: true,
           },
         }),
       );
@@ -79,6 +103,7 @@ export async function GET(
           status: report.issue.status,
           location: report.issue.location,
           synthetic: report.synthetic,
+          dataType: report.dataType,
           events: report.issue.events.map((e) => ({
             id: e.id,
             message: e.message,
@@ -100,6 +125,94 @@ export async function GET(
         { error: "Staff access required. Enter your configured staff token." },
         401,
       );
+    if (p[0] === "ai-lab") {
+      const [
+        model,
+        analyses,
+        evaluations,
+        correctedPredictions,
+        applicationClassifications,
+      ] = await Promise.all([
+        modelStatus(),
+        db.imageAnalysis.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          include: { photograph: true },
+        }),
+        db.modelEvaluation.findMany({
+          orderBy: { evaluatedAt: "desc" },
+          take: 5,
+        }),
+        db.imageAnalysis.count({
+          where: { correctedCategoryId: { not: null } },
+        }),
+        db.imageAnalysis.count({ where: { status: "available" } }),
+      ]);
+      return json({
+        model,
+        activeProvider: (await config()).provider,
+        analyses,
+        evaluations,
+        correctedPredictions,
+        applicationClassifications,
+      });
+    }
+    if (p[0] === "hotspots") {
+      const days = Number(new URL(request.url).searchParams.get("days") || 30);
+      if (![7, 30, 90].includes(days))
+        throw new Error("Use a 7, 30 or 90 day window.");
+      return json({
+        hotspots: findHotspots(
+          await db.issue.findMany({ where: { reports: { some: {} } } }),
+          days,
+        ),
+        days,
+      });
+    }
+    if (p[0] === "search") {
+      const params = new URL(request.url).searchParams;
+      const q = params.get("q")?.slice(0, 200),
+        categoryId = params.get("category") || undefined,
+        status = params.get("status") || undefined,
+        team = params.get("team") || undefined,
+        from = params.get("from"),
+        to = params.get("to"),
+        type = params.get("type") || undefined;
+      const filters: Prisma.IssueWhereInput = {
+        ...(q
+          ? {
+              OR: [
+                { title: { contains: q } },
+                { location: { contains: q } },
+                { reports: { some: { reference: { contains: q } } } },
+              ],
+            }
+          : {}),
+        ...(categoryId ? { categoryId } : {}),
+        ...(status ? { status } : {}),
+        ...(team ? { assignments: { some: { teamId: team } } } : {}),
+        ...(type ? { dataType: type } : {}),
+        ...(from || to
+          ? {
+              createdAt: {
+                ...(from ? { gte: new Date(from) } : {}),
+                ...(to ? { lte: new Date(`${to}T23:59:59Z`) } : {}),
+              },
+            }
+          : {}),
+      };
+      const all = await listIssues(filters);
+      const min = Number(params.get("minPriority") || 0),
+        recurrence = params.get("recurrence") === "true";
+      return json({
+        issues: all.filter(
+          (i) =>
+            (i.override ?? i.calculated.score) >= min &&
+            (!recurrence || i.calculated.recurrence > 0),
+        ),
+        queriedAt: new Date().toISOString(),
+      });
+    }
     if (p[0] === "issues") {
       const issues = await listIssues();
       return json(
@@ -166,6 +279,7 @@ export async function POST(
           lat: z.number().min(50.85).max(50.97),
           lng: z.number().min(-1.5).max(-1.3),
           categoryId: z.string().optional(),
+          photoId: z.string().optional(),
         })
         .parse(body);
       return json(await assess(input));
@@ -208,6 +322,87 @@ export async function POST(
     }
     if (!isStaff(request))
       return json({ error: "Staff access required." }, 401);
+    if (p[0] === "lab-analyze") {
+      const { photoId } = z.object({ photoId: z.string() }).parse(body);
+      const settings = await config();
+      return json(
+        await analyzePhotograph(
+          photoId,
+          settings.reviewThreshold,
+          settings.marginThreshold,
+        ),
+      );
+    }
+    if (p[0] === "lab-sample") {
+      const { sourceId } = z
+        .object({ sourceId: z.string().regex(/^commons-[0-9]+$/) })
+        .parse(body);
+      const source = await db.datasetSource.findUniqueOrThrow({
+        where: { id: sourceId },
+      });
+      if (source.dataType !== "MODEL_EVALUATION")
+        throw new Error("Only labelled evaluation samples are accepted here.");
+      const metadata = JSON.parse(source.payload) as { file: string };
+      if (!/^[0-9]+\.jpg$/.test(metadata.file))
+        throw new Error("Invalid evaluation file.");
+      const bytes = await readFile(
+        `datasets/cache/commons-smoke/${metadata.file}`,
+      );
+      const clean = await sharp(bytes)
+        .rotate()
+        .resize({
+          width: 2000,
+          height: 2000,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      const name = `${randomUUID()}.jpg`;
+      await mkdir("data/uploads", { recursive: true });
+      await writeFile(`data/uploads/${name}`, clean);
+      const photo = await db.photograph.create({
+        data: {
+          path: `/media/${name}`,
+          mime: "image/jpeg",
+          dataType: "MODEL_EVALUATION",
+          sourceId,
+          originalRecordId: source.originalRecordId,
+        },
+      });
+      const settings = await config();
+      return json({
+        photo,
+        source,
+        result: await analyzePhotograph(
+          photo.id,
+          settings.reviewThreshold,
+          settings.marginThreshold,
+        ),
+      });
+    }
+    if (p[0] === "model-load") return json(await inferenceRequest("/load", {}));
+    if (p[0] === "imports") return json(await importManifest(body));
+    if (p[0] === "repair-compare") {
+      const input = z
+        .object({ beforeId: z.string(), afterId: z.string() })
+        .parse(body);
+      try {
+        return json({
+          available: true,
+          ...(await repairComparison(input.beforeId, input.afterId)),
+        });
+      } catch (e) {
+        return json({
+          available: false,
+          recommendation: "Insufficient evidence",
+          warning:
+            e instanceof Error
+              ? e.message
+              : "Model unavailable. Compare manually.",
+        });
+      }
+    }
     if (p[0] === "issues")
       return json(
         await mutateIssue(
@@ -292,11 +487,14 @@ export async function POST(
               "Weights must total 100.",
             ),
           distance: z.number().min(10).max(200),
+          provider: z.enum(["demo", "local"]).optional(),
+          reviewThreshold: z.number().min(0).max(1).optional(),
+          marginThreshold: z.number().min(0).max(5).optional(),
         })
         .parse(body);
       await db.setting.upsert({
         where: { id: "config" },
-        update: { value: JSON.stringify(settings) },
+        update: { value: JSON.stringify({ ...(await config()), ...settings }) },
         create: { id: "config", value: JSON.stringify(settings) },
       });
       return json({ ok: true });

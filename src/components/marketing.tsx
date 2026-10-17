@@ -1,72 +1,35 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   ArrowUpRight,
   ArrowRight,
-  LayoutDashboard,
-  Map,
-  ClipboardList,
   Users,
   ChartNoAxesCombined,
-  Settings,
-  CircleHelp,
-  Search,
-  Bell,
   ChevronRight,
-  Upload,
   MapPin,
   ShieldCheck,
   Check,
   Activity,
   Layers,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   Camera,
-  Building2,
-  Menu,
-  X,
   Route,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  categories as defaultCategories,
-  statuses,
-  transitions,
-  weightNames,
-  financialModel,
-} from "@/lib/rules";
-import {
-  CityMap,
-  CategoryChart,
-  Photo,
-  Match,
-  Issue,
-  Meta,
-  Metrics,
-  initialMeta,
-  api,
-  upload,
-  date,
-  Badge,
-  Status,
-  Score,
-  PageHeading,
-  Message,
-  Empty,
-  Brand,
-  StaffGate,
-  useIssues,
-} from "./shared";
-export function Calculator() {
-  const [v, setV] = useState([12000, 25, 5, 25, 1500]);
+import { financialModel } from "@/lib/rules";
+import { Badge, PageHeading, api } from "./shared";
+export function Calculator({
+  observedReports,
+  observedDuplicates,
+}: { observedReports?: number; observedDuplicates?: number } = {}) {
+  const [v, setV] = useState([
+    observedReports ?? 12000,
+    observedReports ? ((observedDuplicates ?? 0) / observedReports) * 100 : 25,
+    5,
+    25,
+    1500,
+  ]);
   const model = financialModel(
     ...(v as [number, number, number, number, number]),
   );
@@ -75,6 +38,14 @@ export function Calculator() {
       <div>
         <Badge>ILLUSTRATIVE MODEL · NOT MEASURED SAVINGS</Badge>
         <h2>Make the assumptions yours.</h2>
+        {observedReports !== undefined && (
+          <p className="notice">
+            Initial scenario: {observedReports} stored reports and{" "}
+            {observedDuplicates} additional confirmations. These are observed
+            dataset counts, not measured annual volumes; edit the annual
+            scenario below.
+          </p>
+        )}
         <p>
           Model the administrative value of time saved on duplicate reports.
           This excludes repair costs, implementation costs and wider benefits.
@@ -262,20 +233,7 @@ export function Landing() {
             Explore the Southampton Data Observatory <ArrowUpRight size={16} />
           </a>
         </div>
-        <div className="official-stat">
-          <Badge>OFFICIAL AGGREGATE · 2024/25</Badge>
-          <strong>47.1</strong>
-          <h3>fly-tipping incidents per 1,000 residents</h3>
-          <p>
-            Southampton Data Observatory · Waste
-            <br />
-            Reference period 2024/25 · Page updated 29 June 2026
-          </p>
-          <small>
-            Reporting practices can affect comparisons. This statistic is
-            separate from CIVIQ AI’s fictional issue records.
-          </small>
-        </div>
+        <SouthamptonEvidence />
       </section>
       <section className="landing-section">
         <div className="section-heading">
@@ -345,8 +303,8 @@ export function Landing() {
             human accountability.
           </h2>
           <p>
-            Phase 1 runs on transparent text rules and geographic matching.
-            Image interpretation and repair verification remain human decisions.
+            Local vision and sentence models support transparent triage.
+            Officers review model suggestions and verify every repair outcome.
           </p>
           <Link href="/about-data">
             See the methods and limitations <ArrowRight size={17} />
@@ -354,7 +312,7 @@ export function Landing() {
         </div>
         <div className="trust-list">
           {[
-            "Visible DEMO MODE on every page",
+            "Visible model availability and demo status",
             "Explanations beside matching and priority scores",
             "Evidence preserved across independent reports",
             "Staff decisions recorded in an audit trail",
@@ -428,7 +386,7 @@ export function Demo() {
   const steps = [
     {
       title: "Start with the resident",
-      text: "Upload a real photograph, choose a Southampton location and describe the problem. The category suggestion uses text rules only.",
+      text: "Upload a real photograph, choose a Southampton location and describe the problem. Local model mode analyses the image; demo mode uses explicitly labelled text rules.",
       href: "/report",
       cta: "Try resident reporting",
     },
@@ -452,7 +410,7 @@ export function Demo() {
     },
     {
       title: "Verify the repair outcome",
-      text: "Compare fictional before and after evidence. Manual human verification is required; no arbitrary image is given a simulated AI result.",
+      text: "Compare fictional before and after evidence. Manual human verification is required; optional image embeddings support review, and no model score establishes repair safety.",
       href: "/dashboard/issues/demo-12",
       cta: "Inspect verified evidence",
     },
@@ -520,9 +478,9 @@ export function Demo() {
         </div>
       </div>
       <div className="notice">
-        All seed reports and evidence illustrations are fictional. Phase 1
-        evaluates the deterministic workflow. Genuine AI evaluation belongs to
-        Phase 2.
+        All seed reports and evidence illustrations are fictional. V2 local
+        model evaluation uses separate licensed international photographs. The
+        four-image smoke result is not a representative accuracy benchmark.
       </div>
     </main>
   );
@@ -532,82 +490,89 @@ export function AboutData() {
   return (
     <main className="public-content prose">
       <PageHeading
-        eyebrow="DATA, METHODS & LIMITATIONS"
+        eyebrow="DATA, MODELS & PROVENANCE"
         title="Trust starts with clarity."
-        subtitle="Know what the application knows, what it assumes and where humans decide."
+        subtitle="Know what is observed, what is inferred and where a person decides."
       />
       <section className="card detail-section">
-        <h2>Official Southampton context</h2>
+        <h2>Official Southampton evidence</h2>
+        <SouthamptonEvidence />
+        <h2>Five different data classifications</h2>
         <p>
-          The{" "}
-          <a href="https://data.southampton.gov.uk/place/environment/waste/">
-            Southampton Data Observatory’s Waste page
-          </a>{" "}
-          reports 47.1 fly-tipping incidents per 1,000 residents in 2024/25. Its
-          page was updated on 29 June 2026 and checked for this build on 17
-          October 2026. Differences in recording practices can affect
-          comparisons.
+          Official aggregate statistics, public historical issue records, actual
+          user submissions, model evaluation images and synthetic demonstrations
+          are kept separate in the database and interface. No genuine
+          council-level geolocated issue feed has been imported. No coordinates
+          are assigned to international evaluation samples.
+        </p>
+        <h2>Real local image classification</h2>
+        <p>
+          Local model mode uses the Apache-2.0 google/siglip-base-patch16-224
+          checkpoint on actual sanitized uploaded images. It returns candidate
+          descriptions, raw logits, sigmoid similarities, model revision,
+          inference time and a timestamp. These similarities are not calibrated
+          probabilities. Ambiguous or low-support outputs abstain; residents and
+          officers can correct the category.
         </p>
         <p>
-          This is an official aggregate statistic, not an input feed for the
-          issue map. No council complaint dataset has been imported. The brief’s
-          total of 12,208 incidents was not independently confirmed in the page
-          text and is therefore not presented as a verified total.
+          Visibly damaged lamp infrastructure can be a candidate; a daylight
+          photograph cannot establish an electrical outage. Severity and safety
+          wording are separate text rules, not conclusions from image
+          similarity.
         </p>
-        <h2>Fictional demonstration records</h2>
+        <h2>Semantic duplicate review</h2>
         <p>
-          The repeatable seed contains 18 reports across 15 canonical issues.
-          All seed issues are labelled DEMO DATA. Locations and SVG evidence
-          illustrations are synthetic and represent no real complaint. Your
-          locally submitted records are saved separately from seed records.
+          Apache-2.0 sentence-transformers/all-MiniLM-L6-v2 embeddings compare
+          descriptions with cosine similarity. Distance, category, time and
+          supplied asset IDs also constrain candidates. Geographic and keyword
+          matching remain available when embeddings fail, with an explicit
+          fallback label. Human confirmation is always required; original
+          reports and evidence remain stored.
         </p>
-        <h2>Deterministic assistance</h2>
+        <h2>Evaluation with limits</h2>
         <p>
-          Text classification matches editable category keywords. Confidence
-          represents rule coverage. It does not assess photographs or establish
-          public danger. Similar descriptions, compatible categories, distance
-          and age produce duplicate candidates; residents and officers
-          explicitly confirm associations.
+          The included smoke evaluation uses four licensed Commons images: two
+          potholes and two graffiti photographs from several places. Labels were
+          derived from source descriptions and visually checked by the coding
+          agent, not adjudicated by independent human annotators. Measured
+          outputs are stored with model revision and date. Four convenient
+          images cannot establish general civic accuracy or Southampton
+          performance.
         </p>
+        <h2>Synthetic demonstrations and user reports</h2>
         <p>
-          Distinct streetlight asset identifiers prevent matching when supplied.
-          Uncertain cases require human review. An intentionally incorrect
-          streetlight match demonstrates a failure case.
+          The repeatable seed includes 18 fictional reports across 15 canonical
+          issues. SVG evidence is clearly labelled illustration. User reports
+          have a separate USER SUBMITTED classification. Anonymous submissions
+          do not prove reporter independence. Hotspot views separate source
+          types and count canonical issues rather than repeated reports.
         </p>
-        <h2>Priority methodology</h2>
+        <h2>Priority, service routing and repair review</h2>
         <p>
-          A configurable score out of 100 combines text-derived severity (35),
-          accessibility impact (20), age and recurrence (15), confirmations
-          (10), assumed neutral location context (10), and rule confidence (10).
-          Context defaults to 0.5 because no verified context dataset is
-          available. This is not official Southampton City Council policy. Human
-          overrides require a reason and audit event.
+          Configurable weights combine text-derived severity, reported
+          accessibility impacts, age/recurrence, confirmations, neutral location
+          context and evidence uncertainty. They are not official council
+          policy. Service recommendations come from configurable category
+          ownership, not verified municipal boundaries. Before/after cosine
+          similarity is experimental supporting evidence; a person must approve
+          closure and residents may request reopening.
         </p>
-        <h2>Maps & boundaries</h2>
+        <h2>Maps, imports and deployment</h2>
         <p>
-          Map tiles are supplied by{" "}
           <a href="https://www.openstreetmap.org/copyright">
             OpenStreetMap contributors
           </a>{" "}
-          and require internet access. The local bounding box is only a demo
-          input constraint. It is not an official administrative boundary.
-          Resident infrastructure coordinates are public; do not submit
-          sensitive locations.
+          provide map tiles. The input bounding box is not an official
+          Southampton boundary. Imported records require licence review,
+          attribution, source URL, dates, coverage and limitations. Historical
+          issues need supplied locations. Model weights and large datasets are
+          excluded from Git.
         </p>
-        <h2>Phase 2 AI architecture</h2>
         <p>
-          Vision, embeddings, multimodal matching, repair assessment and summary
-          adapters are defined, but no OpenAI calls are implemented. Setting
-          AI_PROVIDER=openai returns a clear unsupported-provider error. The
-          interface never claims a live model is operating.
-        </p>
-        <h2>Commercial assumptions</h2>
-        <p>
-          All tiers are proposed illustrative pricing. The calculator values
-          assumed staff time and subtracts annual subscription cost. This
-          difference is not net profit or realised financial savings. A second
-          city requires official boundary data, reviewed categories, source
-          provenance, local workflows, authentication and retention decisions.
+          The Next.js app and loopback Python service run separately. Deploying
+          Next.js to Vercel does not deploy Python inference; a separately
+          secured inference host and persistent storage are required. This
+          prototype is not an official council service.
         </p>
       </section>
     </main>
@@ -659,9 +624,12 @@ export function Privacy() {
         <h2>External connections</h2>
         <p>
           OpenStreetMap tile requests disclose usual network information to its
-          tile service. No photographs are sent to an AI provider. No analytics
-          tracker or paid service is configured. This notice describes
-          implemented behaviour and makes no regulatory-compliance claim.
+          tile service. When local model mode is enabled, sanitized images are
+          sent to the Python inference service configured by the server
+          operator; by default it runs on this same computer. No paid external
+          model provider is configured. No analytics tracker or paid service is
+          configured. This notice describes implemented behaviour and makes no
+          regulatory-compliance claim.
         </p>
         <h2>Safety & limitations</h2>
         <p>
@@ -677,5 +645,55 @@ export function Privacy() {
         </p>
       </section>
     </main>
+  );
+}
+
+export function SouthamptonEvidence() {
+  const [source, setSource] = useState<{
+    url: string;
+    period: string;
+    retrievedAt: string;
+    payload: string;
+    note: string;
+  } | null>(null);
+  useEffect(() => {
+    api<typeof source>("evidence")
+      .then(setSource)
+      .catch(() => {});
+  }, []);
+  let payload: {
+    statistic?: number;
+    unit?: string;
+    sourceUpdated?: string;
+    verifiedOn?: string;
+  } = {};
+  if (source) {
+    try {
+      payload = JSON.parse(source.payload);
+    } catch {}
+  }
+  return (
+    <div className="evidence-panel">
+      <Badge>OFFICIAL AGGREGATE · {source?.period || "2024/25"}</Badge>
+      <strong>{payload.statistic ?? "Unavailable"}</strong>
+      <h3>
+        {payload.unit || "Verified source metadata is loading or unavailable"}
+      </h3>
+      <p>
+        Southampton Data Observatory · Waste
+        <br />
+        Source update: {payload.sourceUpdated || "Unavailable"} · checked:{" "}
+        {payload.verifiedOn || "Unavailable"}
+      </p>
+      <small>
+        {source?.note ||
+          "No statistic is invented when the verified source record is unavailable."}
+      </small>
+      {source && (
+        <a className="source-link" href={source.url}>
+          Read the original source <ArrowUpRight size={13} />
+        </a>
+      )}
+    </div>
   );
 }

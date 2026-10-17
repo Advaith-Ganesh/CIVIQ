@@ -42,9 +42,17 @@ model Issue {
  override Int?
  context Float @default(0.5)
  synthetic Boolean @default(false)
+ dataType String @default("USER_SUBMITTED")
+ sourceId String?
+ originalRecordId String?
+ referenceDate DateTime?
+ importedAt DateTime?
+ accessibility String @default("[]")
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
  closedAt DateTime?
+ @@index([categoryId, status, createdAt])
+ @@index([lat, lng])
  reports Report[]
  assessments Assessment[]
  matches DuplicateMatch[]
@@ -61,18 +69,28 @@ model Report {
  lat Float
  lng Float
  synthetic Boolean @default(false)
+ dataType String @default("USER_SUBMITTED")
+ sourceId String?
+ originalRecordId String?
+ referenceDate DateTime?
+ importedAt DateTime?
+ accessibility String @default("[]")
  createdAt DateTime @default(now())
  photographs Photograph[]
  matches DuplicateMatch[]
 }
 model Photograph {
  id String @id @default(cuid())
+ dataType String @default("USER_SUBMITTED")
+ sourceId String?
+ originalRecordId String?
  path String
  mime String
  reportId String?
  report Report? @relation(fields: [reportId], references: [id])
  repair RepairEvidence?
  createdAt DateTime @default(now())
+ analyses ImageAnalysis[]
 }
 model Assessment {
  id String @id @default(cuid())
@@ -132,8 +150,61 @@ model DatasetSource {
  period String
  retrievedAt DateTime
  note String
+ dataType String @default("OFFICIAL_AGGREGATE")
+ licence String @default("Reuse terms unverified; attribution link only")
+ coverage String @default("Southampton")
+ originalRecordId String?
+ importDate DateTime @default(now())
+ status String @default("metadata_only")
+ importedCount Int @default(0)
+ payload String @default("{}")
+ records ImportedRecord[]
 }
 model Setting {
  id String @id
  value String
+}
+
+model ImageAnalysis {
+ id String @id @default(cuid())
+ photographId String
+ photograph Photograph @relation(fields: [photographId], references: [id])
+ provider String
+ modelId String?
+ revision String?
+ status String
+ categoryId String?
+ abstained Boolean @default(true)
+ durationMs Float?
+ result String
+ correctedCategoryId String?
+ createdAt DateTime @default(now())
+ @@index([photographId, createdAt])
+}
+model TextEmbedding {
+ id String @id
+ modelId String
+ revision String
+ vector String
+ createdAt DateTime @default(now())
+}
+model ImportedRecord {
+ id String @id @default(cuid())
+ sourceId String
+ source DatasetSource @relation(fields: [sourceId], references: [id])
+ originalRecordId String
+ dataType String
+ referenceDate DateTime
+ importedAt DateTime @default(now())
+ payload String
+ @@unique([sourceId, originalRecordId])
+}
+model ModelEvaluation {
+ id String @id @default(cuid())
+ modelId String
+ revision String
+ dataset String
+ sampleSize Int
+ result String
+ evaluatedAt DateTime
 }

@@ -15,13 +15,19 @@ jobs:
       - run: npm ci
       - run: cp .env.example .env
       - run: npm run db:setup
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install fastapi==0.143.3 uvicorn==0.54.0 Pillow==13.0.0 pytest==9.1.1 httpx==0.28.1
+      - run: python -m pytest inference -q
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: playwright-failure-evidence
+          name: playwright-evidence
           path: test-results/
