@@ -5,10 +5,10 @@ Executed on 17 October 2026 against the existing repository. Baseline and preser
 ## Local execution
 
 - ESLint: passed with zero warnings. Strict TypeScript: passed.
-- Vitest: 42 tests across four files passed, including the original 26. Disposable database integration tests verify idempotent imports, no issue creation for evaluation images, manual report preservation on inference failure, accessibility persistence and safe demo reset with analysis rows.
+- Vitest: 43 tests across four files passed, including the original 26. Disposable database integration tests verify idempotent imports, no issue creation for evaluation images, manual report preservation on inference failure, accessibility persistence and safe demo reset with analysis rows. Historical original IDs containing slashes remain preserved while generated issue/reference IDs remain safe for routing. Priority recurrence counts stay within the issue’s provenance group, and unavailable model confidence contributes zero instead of an invented value.
 - Python pytest: six tests passed, covering authentication, actual unloaded state, unavailable inference, bounded batches, invalid/oversized images and abstention logic. One upstream Starlette/httpx deprecation warning remains.
 - Production Next.js webpack build: passed. Production staff guard was tested: workspace required a staff token, then unlocked with an ephemeral local verification token.
-- Additive migrations applied to the existing SQLite database. No existing migration was replaced; original record IDs and media retained. Fresh disposable migration/seed databases passed in integration tests.
+- Additive migrations applied to the existing SQLite database. No existing migration was replaced; original record IDs and media retained. Fresh disposable migration/seed databases passed in integration tests. The final audit compared all original column values for 16 issues, 19 reports, 22 photographs, 41 events, six assignments, three repair records, five matches and 16 assessments: every original row is unchanged. Both original uploaded-file SHA-256 hashes match the checkpoint. New verification records are additive; foreign-key checks pass.
 
 ## Executed genuine models
 
@@ -20,11 +20,15 @@ Actual MiniLM embedding check: related pothole/accessibility descriptions had co
 
 ## Browser workflows and captures
 
-The local standalone Playwright Chromium launcher is blocked by the host's macOS MachPort sandbox. The running application was therefore additionally exercised through Codex's in-app browser using its Playwright locator API and genuine screenshot API. Full headless Chromium workflows run in the repository's GitHub Actions CI; screenshots are uploaded as the playwright-evidence artifact.
+The local standalone Playwright Chromium launcher is blocked by the host's macOS MachPort sandbox. The running application was therefore additionally exercised through Codex's in-app browser using its Playwright locator API and genuine screenshot API. Full headless Chromium workflows run in the repository's GitHub Actions CI; screenshots are uploaded as the playwright-evidence artifact. Two direct Chromium captures downloaded from CI are also saved as `docs/screenshots/v2-playwright-dashboard.png` and `v2-playwright-data-sources.png`; these show the explicitly separate demo mode.
 
 Executed locally against the production build: licensed AI Lab classification; five-step report upload/location/details/accessibility; actual model abstention on fictional illustration; manual correction; genuine MiniLM duplicate candidates; separate report submission; council assignment; legal status transitions; repair upload; actual image comparison; manual closure; public tracking and reopening. The added report is explicitly labelled fictional in its description, reference CIV-57C64A2881. It is an actual app submission, not a genuine council incident.
 
 The map/inspector selection and sidebar collapse were exercised. A Leaflet error occurred during development hot reload after rebuilding; the fresh production build rendered the hotspot and dashboard maps correctly. Mobile report and dashboard layouts were checked at 390×844 with document width 390 (no horizontal overflow). Genuine captures are under `docs/screenshots/v2-*.png`. Existing V1 screenshots remain for historical evidence.
+
+## Additional import execution
+
+The actual CSV CLI ran against a disposable freshly migrated database: a numeric aggregate record imported once; a second run inserted zero; seeded issue count remained unchanged. The disposable database was removed afterwards.
 
 ## Limits
 

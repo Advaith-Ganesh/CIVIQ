@@ -127,3 +127,45 @@ it("resets only disposable demo issues even when they have analysis rows", async
   );
   expect(await db.issue.findUnique({ where: { id: "demo-2" } })).not.toBeNull();
 });
+
+it("preserves original IDs with slashes while creating route-safe historical issue IDs", async () => {
+  const source = {
+    id: "historical-route-test",
+    name: "Isolated historical test",
+    url: "https://example.org/fixture",
+    licence: "CC0-1.0",
+    licenceReviewed: true,
+    attribution: "Test fixture",
+    coverage: "Southampton test boundary",
+    referenceDate: "2026-01-01T00:00:00Z",
+    dataType: "PUBLIC_HISTORICAL",
+    limitations:
+      "Isolated test fixture; never imported into the working database.",
+  };
+  const manifest = {
+    source,
+    records: [
+      {
+        id: "ward/asset?001",
+        referenceDate: source.referenceDate,
+        categoryId: "pothole",
+        description: "Historical test hole",
+        location: "Test location",
+        lat: 50.927,
+        lng: -1.395,
+      },
+    ],
+  };
+  await importManifest(manifest);
+  await importManifest(manifest);
+  const imported = await db.issue.findMany({ where: { sourceId: source.id } });
+  expect(imported).toHaveLength(1);
+  expect(imported[0].id).toMatch(/^import-[a-f0-9]{32}$/);
+  expect(imported[0].originalRecordId).toBe("ward/asset?001");
+  const scored = await service.issueScore({
+    ...imported[0],
+    reports: [{ id: "one" }],
+    assessments: [{ confidence: 0 }],
+  });
+  expect(scored.recurrence).toBe(0);
+});

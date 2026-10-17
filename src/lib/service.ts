@@ -148,13 +148,21 @@ export async function issueScore(
     createdAt: Date;
     context: number;
     accessibility?: string;
+    dataType?: string;
+    synthetic?: boolean;
     reports: { id: string }[];
     assessments: { confidence: number }[];
   },
   weights = defaultWeights,
 ) {
   const all = await db.issue.findMany({
-    where: { categoryId: issue.categoryId, id: { not: issue.id } },
+    where: {
+      categoryId: issue.categoryId,
+      id: { not: issue.id },
+      dataType: issue.synthetic
+        ? "SYNTHETIC_DEMO"
+        : issue.dataType || "USER_SUBMITTED",
+    },
   });
   const recurrence = all.filter((i) => haversine(issue, i) < 75).length;
   return {
@@ -173,7 +181,7 @@ export async function issueScore(
         reports: issue.reports.length,
         recurrence,
         context: issue.context,
-        evidenceConfidence: issue.assessments[0]?.confidence || 0.35,
+        evidenceConfidence: issue.assessments[0]?.confidence ?? 0,
       },
       weights,
     ),

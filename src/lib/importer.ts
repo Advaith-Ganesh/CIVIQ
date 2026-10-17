@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { db } from "./db";
 import { dataTypes } from "./provenance";
 const sourceSchema = z.object({
@@ -148,10 +149,14 @@ export async function importManifest(raw: unknown) {
       )
         continue;
       if (source.dataType === "PUBLIC_HISTORICAL") {
+        const key = createHash("sha256")
+          .update(JSON.stringify([source.id, r.id]))
+          .digest("hex")
+          .slice(0, 32);
         await tx.category.findUniqueOrThrow({ where: { id: r.categoryId } });
         await tx.issue.create({
           data: {
-            id: `import-${source.id}-${r.id}`,
+            id: `import-${key}`,
             title: r.description!.slice(0, 90),
             description: r.description!,
             categoryId: r.categoryId!,
@@ -169,7 +174,7 @@ export async function importManifest(raw: unknown) {
             createdAt: new Date(r.referenceDate),
             reports: {
               create: {
-                reference: `HIST-${source.id}-${r.id}`,
+                reference: `HIST-${key.toUpperCase()}`,
                 description: r.description!,
                 lat: r.lat!,
                 lng: r.lng!,

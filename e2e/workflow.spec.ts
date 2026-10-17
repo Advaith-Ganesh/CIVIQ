@@ -255,7 +255,14 @@ test("offline local model preserves manual reporting and source-aware database s
   page,
   request,
 }) => {
-  await request.post("/api/settings", { data: { provider: "local" } });
+  const settings = { weights: [35, 20, 15, 10, 10, 10], distance: 75 };
+  expect(
+    (
+      await request.post("/api/settings", {
+        data: { ...settings, provider: "local" },
+      })
+    ).ok(),
+  ).toBe(true);
   try {
     const uploaded = await request.post("/api/upload", {
       multipart: {
@@ -315,6 +322,8 @@ test("offline local model preserves manual reporting and source-aware database s
       fullPage: true,
     });
   } finally {
-    await request.post("/api/settings", { data: { provider: "demo" } });
+    await request.post("/api/settings", {
+      data: { ...settings, provider: "demo" },
+    });
   }
 });

@@ -39,10 +39,10 @@ export const transitions: Record<string, string[]> = {
 };
 export const defaultWeights = [35, 20, 15, 10, 10, 10];
 export const weightNames = [
-  "Visible severity",
+  "Reported severity",
   "Public impact / accessibility",
   "Recurrence and age",
-  "Independent confirmations",
+  "Additional submissions",
   "Location context",
   "Evidence confidence",
 ];

@@ -68,7 +68,14 @@ export function Report({ meta }: { meta: Meta }) {
         score: number;
         distance: number;
         explanation: string;
-        issue: { title: string; location: string; lat: number; lng: number };
+        issue: {
+          title: string;
+          location: string;
+          lat: number;
+          lng: number;
+          synthetic?: boolean;
+          dataType?: string;
+        };
       }[];
     } | null>(null),
     [result, setResult] = useState<{
@@ -420,6 +427,7 @@ export function Report({ meta }: { meta: Meta }) {
                     />
                     <span>
                       <strong>{m.issue.title}</strong>
+                      <DataBadge record={m.issue} />
                       <small>
                         {m.issue.location} · match score {m.score.toFixed(2)} /
                         1
