@@ -1,0 +1,139 @@
+generator client {
+ provider = "prisma-client-js"
+}
+datasource db {
+ provider = "sqlite"
+ url = env("DATABASE_URL")
+}
+model Actor {
+ id String @id @default(cuid())
+ name String
+ role String
+ events Event[]
+}
+model Category {
+ id String @id
+ name String
+ keywords String
+ active Boolean @default(true)
+ teamId String?
+ team Team? @relation(fields: [teamId], references: [id])
+ issues Issue[]
+}
+model Team {
+ id String @id @default(cuid())
+ name String @unique
+ area String
+ categories Category[]
+ assignments Assignment[]
+}
+model Issue {
+ id String @id @default(cuid())
+ title String
+ description String
+ categoryId String
+ category Category @relation(fields: [categoryId], references: [id])
+ lat Float
+ lng Float
+ location String
+ status String @default("Submitted")
+ severity Int
+ priority Int
+ override Int?
+ context Float @default(0.5)
+ synthetic Boolean @default(false)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ closedAt DateTime?
+ reports Report[]
+ assessments Assessment[]
+ matches DuplicateMatch[]
+ assignments Assignment[]
+ events Event[]
+ repairs RepairEvidence[]
+}
+model Report {
+ id String @id @default(cuid())
+ reference String @unique
+ issueId String
+ issue Issue @relation(fields: [issueId], references: [id])
+ description String
+ lat Float
+ lng Float
+ synthetic Boolean @default(false)
+ createdAt DateTime @default(now())
+ photographs Photograph[]
+ matches DuplicateMatch[]
+}
+model Photograph {
+ id String @id @default(cuid())
+ path String
+ mime String
+ reportId String?
+ report Report? @relation(fields: [reportId], references: [id])
+ repair RepairEvidence?
+ createdAt DateTime @default(now())
+}
+model Assessment {
+ id String @id @default(cuid())
+ issueId String
+ issue Issue @relation(fields: [issueId], references: [id])
+ provider String
+ confidence Float
+ explanation String
+ createdAt DateTime @default(now())
+}
+model DuplicateMatch {
+ id String @id @default(cuid())
+ reportId String
+ report Report @relation(fields: [reportId], references: [id])
+ issueId String
+ issue Issue @relation(fields: [issueId], references: [id])
+ score Float
+ distance Float
+ explanation String
+ decision String @default("Pending")
+ createdAt DateTime @default(now())
+}
+model Assignment {
+ id String @id @default(cuid())
+ issueId String
+ issue Issue @relation(fields: [issueId], references: [id])
+ teamId String
+ team Team @relation(fields: [teamId], references: [id])
+ scheduledAt DateTime?
+ createdAt DateTime @default(now())
+}
+model Event {
+ id String @id @default(cuid())
+ issueId String
+ issue Issue @relation(fields: [issueId], references: [id])
+ actorId String
+ actor Actor @relation(fields: [actorId], references: [id])
+ kind String
+ message String
+ public Boolean @default(true)
+ createdAt DateTime @default(now())
+}
+model RepairEvidence {
+ id String @id @default(cuid())
+ issueId String
+ issue Issue @relation(fields: [issueId], references: [id])
+ photographId String @unique
+ photograph Photograph @relation(fields: [photographId], references: [id])
+ outcome String
+ verified Boolean @default(false)
+ createdAt DateTime @default(now())
+}
+model DatasetSource {
+ id String @id
+ title String
+ url String
+ period String
+ retrievedAt DateTime
+ note String
+}
+model Setting {
+ id String @id
+ value String
+}
